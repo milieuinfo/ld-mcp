@@ -20,23 +20,28 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 
 /**
- * Opzoeken van klassen en properties in een geladen set ontologieën. Geeft tekst terug die
- * bedoeld is voor een taalmodel: compact, met prefixvormen waar mogelijk.
+ * Looks up classes and properties in a loaded set of ontologies. Returns text intended for a
+ * language model: compact, with prefixed names where possible.
  */
 public final class VocabIndex {
 
     private static final Property DCT_DESCRIPTION =
             ResourceFactory.createProperty("http://purl.org/dc/terms/description");
 
-    /** Typen die een resource tot "term" maken (klasse of property). */
+    /** Types that make a resource a "term" (class or property). */
     private static final Set<Resource> TERM_TYPES = Set.of(
             RDFS.Class, OWL.Class, RDF.Property,
             OWL.ObjectProperty, OWL.DatatypeProperty, OWL.AnnotationProperty);
 
     private final Model model;
-    /** Alle termen, gesorteerd op IRI, éénmaal berekend. */
+    /** All terms, sorted by IRI, computed once. */
     private final List<Resource> terms;
 
+    /**
+     * Builds the index of all classes and properties in the model.
+     *
+     * @param model the loaded ontologies; its namespace prefixes are used to expand and shorten IRIs
+     */
     public VocabIndex(Model model) {
         this.model = model;
         Set<Resource> found = new TreeSet<>(Comparator.comparing(Resource::getURI));
@@ -45,7 +50,7 @@ public final class VocabIndex {
                     .filterKeep(Resource::isURIResource)
                     .forEachRemaining(found::add);
         }
-        // Ook termen die enkel via subClassOf/subPropertyOf/domain/range gedeclareerd zijn.
+        // Also terms that are only declared through subClassOf/subPropertyOf/domain/range.
         for (Property p : List.of(RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)) {
             model.listSubjectsWithProperty(p)
                     .filterKeep(Resource::isURIResource)
@@ -54,11 +59,25 @@ public final class VocabIndex {
         this.terms = List.copyOf(found);
     }
 
+    /**
+     * Returns the size of the index.
+     *
+     * @return the number of indexed terms
+     */
     public int size() {
         return terms.size();
     }
 
-    /** Beschrijving van één term, of een "niet gevonden"-melding met suggesties. */
+    /**
+     * Describes one term: type, label, definition, superclasses and superproperties, domain,
+     * range, inverse, equivalents, disjoint classes and subterms.
+     *
+     * @param term a prefixed name ({@code sosa:Observation}) or a full IRI
+     * @return the description, or a "Not found" message followed by suggestions (the same local
+     *         name in another namespace, or similar local names)
+     * @throws IllegalArgumentException if the prefix is unknown or the term is neither a prefixed
+     *                                  name nor an IRI
+     */
     public String lookup(String term) {
         String iri = expand(term);
         Resource r = model.createResource(iri);
@@ -70,7 +89,7 @@ public final class VocabIndex {
         sb.append(shortForm(iri)).append("  <").append(iri).append(">\n");
         section(sb, "type", objects(r, RDF.type));
         section(sb, "label", literals(r, RDFS.label, SKOS.prefLabel));
-        section(sb, "definitie", literals(r, SKOS.definition, RDFS.comment, DCT_DESCRIPTION));
+        section(sb, "definition", literals(r, SKOS.definition, RDFS.comment, DCT_DESCRIPTION));
         section(sb, "subClassOf", objects(r, RDFS.subClassOf));
         section(sb, "subPropertyOf", objects(r, RDFS.subPropertyOf));
         section(sb, "domain", objects(r, RDFS.domain));
@@ -79,12 +98,19 @@ public final class VocabIndex {
         section(sb, "equivalent", objects(r, OWL.equivalentClass, OWL.equivalentProperty));
         section(sb, "disjointWith", objects(r, OWL.disjointWith));
         section(sb, "isDefinedBy", objects(r, RDFS.isDefinedBy));
-        section(sb, "subklassen", subjects(RDFS.subClassOf, r));
+        section(sb, "subclasses", subjects(RDFS.subClassOf, r));
         section(sb, "subproperties", subjects(RDFS.subPropertyOf, r));
         return sb.toString();
     }
 
-    /** Termen waarvan lokale naam, label of IRI de zoekterm bevat (hoofdletterongevoelig). */
+    /**
+     * Finds terms whose local name or label contains the query (case-insensitive). Exact matches
+     * on the local name come first, then local names that start with the query, then the rest.
+     *
+     * @param query the text to search for
+     * @param limit the maximum number of results to list
+     * @return the number of hits and the first {@code limit} terms with their type and label
+     */
     public String search(String query, int limit) {
         String q = query.toLowerCase(Locale.ROOT);
         List<Resource> hits = terms.stream()
@@ -93,12 +119,12 @@ public final class VocabIndex {
                         .thenComparing(Resource::getURI))
                 .toList();
         if (hits.isEmpty()) {
-            return "Geen termen gevonden voor '" + query + "'.";
+            return "No terms found for '" + query + "'.";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append(hits.size()).append(" treffer(s)");
+        sb.append(hits.size()).append(" hit(s)");
         if (hits.size() > limit) {
-            sb.append(", eerste ").append(limit).append(" getoond");
+            sb.append(", first ").append(limit).append(" shown");
         }
         sb.append(":\n");
         hits.stream().limit(limit).forEach(t -> sb.append("- ")
@@ -109,7 +135,7 @@ public final class VocabIndex {
         return sb.toString();
     }
 
-    // ---------------------------------------------------------------- hulpfuncties
+    // ---------------------------------------------------------------- helpers
 
     private String notFound(String term, String iri) {
         String local = localName(iri).toLowerCase(Locale.ROOT);
@@ -117,13 +143,13 @@ public final class VocabIndex {
                 .filter(t -> localName(t.getURI()).equalsIgnoreCase(local))
                 .map(t -> shortForm(t.getURI()))
                 .toList();
-        StringBuilder sb = new StringBuilder("Niet gevonden: ").append(term);
+        StringBuilder sb = new StringBuilder("Not found: ").append(term);
         if (!iri.equals(term)) {
             sb.append("  <").append(iri).append(">");
         }
         sb.append('\n');
         if (!sameLocal.isEmpty()) {
-            sb.append("Zelfde lokale naam in een andere namespace: ")
+            sb.append("Same local name in another namespace: ")
                     .append(String.join(", ", sameLocal)).append('\n');
         } else if (!local.isEmpty()) {
             List<String> similar = terms.stream()
@@ -134,13 +160,16 @@ public final class VocabIndex {
                     .map(t -> shortForm(t.getURI()))
                     .toList();
             if (!similar.isEmpty()) {
-                sb.append("Gelijkaardige termen: ").append(String.join(", ", similar)).append('\n');
+                sb.append("Similar terms: ").append(String.join(", ", similar)).append('\n');
             }
         }
         return sb.toString();
     }
 
-    /** Zet een prefixvorm (sosa:Observation) om naar een volledige IRI; IRI's blijven ongewijzigd. */
+    /**
+     * Expands a prefixed name ({@code sosa:Observation}) to a full IRI; IRIs, with or without
+     * angle brackets, are returned unchanged.
+     */
     String expand(String term) {
         String t = term.strip();
         if (t.startsWith("<") && t.endsWith(">")) {
@@ -153,12 +182,12 @@ public final class VocabIndex {
         if (colon >= 0) {
             String ns = model.getNsPrefixURI(t.substring(0, colon));
             if (ns == null) {
-                throw new IllegalArgumentException("Onbekend prefix '" + t.substring(0, colon)
-                        + "'. Gekende prefixen: " + String.join(", ", new TreeSet<>(model.getNsPrefixMap().keySet())));
+                throw new IllegalArgumentException("Unknown prefix '" + t.substring(0, colon)
+                        + "'. Known prefixes: " + String.join(", ", new TreeSet<>(model.getNsPrefixMap().keySet())));
             }
             return ns + t.substring(colon + 1);
         }
-        throw new IllegalArgumentException("Geef een prefixvorm (sosa:Observation) of een volledige IRI.");
+        throw new IllegalArgumentException("Give a prefixed name (sosa:Observation) or a full IRI.");
     }
 
     private boolean matches(Resource t, String q) {
@@ -167,7 +196,7 @@ public final class VocabIndex {
                         .anyMatch(l -> l.toLowerCase(Locale.ROOT).contains(q));
     }
 
-    /** Exacte lokale naam eerst, dan begint-met, dan de rest. */
+    /** Exact local name first, then starts-with, then the rest. */
     private int rank(Resource t, String q) {
         String local = localName(t.getURI()).toLowerCase(Locale.ROOT);
         if (local.equals(q)) {
@@ -194,7 +223,7 @@ public final class VocabIndex {
                 .map(this::render).distinct().sorted().toList();
     }
 
-    /** Literals, Nederlands en Engels eerst. */
+    /** Literals, Dutch and English first. */
     private List<String> literals(Resource r, Property... properties) {
         List<Literal> out = new ArrayList<>();
         for (Property p : properties) {
@@ -230,7 +259,7 @@ public final class VocabIndex {
         return describeBlank(node.asResource());
     }
 
-    /** OWL-restricties en -lijsten kort weergeven in plaats van een blank-node-id. */
+    /** Summarises OWL restrictions and lists instead of showing a blank node id. */
     private String describeBlank(Resource b) {
         if (b.hasProperty(OWL.onProperty)) {
             String p = render(b.getProperty(OWL.onProperty).getObject());
@@ -238,11 +267,11 @@ public final class VocabIndex {
                     OWL.cardinality, OWL.minCardinality, OWL.maxCardinality,
                     OWL2_QUALIFIED_CARDINALITY, OWL2_MIN_QUALIFIED, OWL2_MAX_QUALIFIED)) {
                 if (b.hasProperty(kind)) {
-                    return "restrictie " + p + " " + kind.getLocalName() + " "
+                    return "restriction " + p + " " + kind.getLocalName() + " "
                             + render(b.getProperty(kind).getObject());
                 }
             }
-            return "restrictie op " + p;
+            return "restriction on " + p;
         }
         for (Property set : List.of(OWL.unionOf, OWL.intersectionOf)) {
             if (b.hasProperty(set)) {

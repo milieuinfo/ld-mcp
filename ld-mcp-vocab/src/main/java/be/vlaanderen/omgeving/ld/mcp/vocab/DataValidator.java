@@ -34,20 +34,24 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
 /**
- * Valideert een RDF-databestand tegen de opgeladen ontologieën, in vier stappen:
+ * Validates an RDF data file against the loaded ontologies, in four steps:
  * <ol>
- *   <li>vocabulaire: elk predicaat en elk {@code rdf:type}-doel moet in de ontologieën voorkomen;</li>
- *   <li>regelinferentie (optioneel, {@code --rules}) met de structurele deelset
+ *   <li>vocabulary: every predicate and every {@code rdf:type} object must occur in the
+ *       ontologies;</li>
+ *   <li>rule inference (optional, {@code --rules}) with the structural subset
  *       (subClassOf, subPropertyOf, inverseOf, domain, range);</li>
- *   <li>OWL-consistentie met OWLMiniReasoner en de deelset {@code owl:disjointWith}
- *       (inclusief {@code owl:AllDisjointClasses} en {@code owl:disjointUnionOf}, omgezet naar
- *       paren), op het model na inferentie;</li>
- *   <li>SHACL (optioneel, {@code --shapes}) op het oorspronkelijke model.</li>
+ *   <li>OWL consistency with OWLMiniReasoner and the {@code owl:disjointWith} subset
+ *       (including {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}, expanded into
+ *       pairs), on the model after inference;</li>
+ *   <li>SHACL (optional, {@code --shapes} and/or {@code --generate-shapes}) on the original
+ *       model.</li>
  * </ol>
+ * The report marks each step with {@code [VOCAB]}/{@code [VOCAB ERROR]}, {@code [INFERENCE]},
+ * {@code [OWL]}/{@code [MODEL INVALID]} and {@code [SHACL]}.
  */
 public final class DataValidator {
 
-    /** Maximum aantal meldingen per stap; de rest wordt enkel geteld. */
+    /** Maximum number of messages per step; the remainder is only counted. */
     private static final int MAX_MESSAGES = 50;
 
     private final Model ontology;
@@ -58,10 +62,17 @@ public final class DataValidator {
     private final Shapes shapes;
 
     /**
-     * @param rules  Jena-regelbestand, of {@code null} om inferentie over te slaan
-     * @param shapes SHACL-shapesbestand, of {@code null} om SHACL over te slaan
+     * Prepares the subsets, reasoners and shapes; these are reused for every validation.
+     *
+     * @param ontology       the loaded ontologies
+     * @param index          index over the same ontologies, used for suggestions on unknown terms
+     * @param rules          Jena rules file, or {@code null} to skip inference
+     * @param shapes         SHACL shapes file, or {@code null}
+     * @param generateShapes generate shapes from the OWL restrictions of the ontology (combined
+     *                       with {@code shapes}, if given); without either, SHACL is skipped
      */
-    public DataValidator(Model ontology, VocabIndex index, Path rules, Path shapes) {
+    public DataValidator(Model ontology, VocabIndex index, Path rules, Path shapes,
+                         boolean generateShapes) {
         this.ontology = ontology;
         this.index = index;
         this.structural = subset(ontology,
@@ -69,23 +80,31 @@ public final class DataValidator {
         this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()
                 .bindSchema(disjointness(ontology));
         this.rules = rules == null ? null : Rule.parseRules(read(rules));
-        this.shapes = shapes == null ? null : Shapes.parse(RDFDataMgr.loadGraph(shapes.toString()));
+        this.shapes = shapes(ontology, shapes, generateShapes);
     }
 
+    /**
+     * Validates one data file.
+     *
+     * @param file path to the file, relative to the working directory or absolute; the format is
+     *             derived from the extension
+     * @return the report, or a message starting with {@code PARSE ERROR} if the file cannot be parsed
+     * @throws IllegalArgumentException if the file does not exist
+     */
     public String validate(String file) {
         Path path = Path.of(file);
         if (!Files.isRegularFile(path)) {
-            throw new IllegalArgumentException("Bestand niet gevonden: " + path.toAbsolutePath());
+            throw new IllegalArgumentException("File not found: " + path.toAbsolutePath());
         }
         Model data;
         try {
             data = RDFDataMgr.loadModel(path.toString());
         } catch (RiotException e) {
-            return "PARSEFOUT in " + file + ": " + e.getMessage();
+            return "PARSE ERROR in " + file + ": " + e.getMessage();
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Validatie: ").append(file).append(" (").append(data.size()).append(" triples)\n");
+        sb.append("Validation: ").append(file).append(" (").append(data.size()).append(" triples)\n");
         vocabulary(data, sb);
         Model inferred = inference(data, sb);
         owl(inferred, data, sb);
@@ -93,19 +112,19 @@ public final class DataValidator {
         return sb.toString();
     }
 
-    // ---------------------------------------------------------------- stappen
+    // ---------------------------------------------------------------- steps
 
     private void vocabulary(Model data, StringBuilder sb) {
         Set<String> unknown = new LinkedHashSet<>();
         data.listStatements().forEachRemaining(st -> {
             String p = st.getPredicate().getURI();
             if (!ontology.containsResource(ontology.createResource(p))) {
-                unknown.add("Onbekende property: " + p);
+                unknown.add("Unknown property: " + p);
             }
             if (st.getPredicate().equals(RDF.type) && st.getObject().isURIResource()) {
                 String c = st.getObject().asResource().getURI();
                 if (!ontology.containsResource(ontology.createResource(c))) {
-                    unknown.add("Onbekende class: " + c);
+                    unknown.add("Unknown class: " + c);
                 }
             }
         });
@@ -113,12 +132,12 @@ public final class DataValidator {
             sb.append("\n[VOCAB] ok\n");
             return;
         }
-        sb.append("\n[VOCAB ERROR] ").append(unknown.size()).append(" onbekende term(en)\n");
+        sb.append("\n[VOCAB ERROR] ").append(unknown.size()).append(" unknown term(s)\n");
         List<String> lines = new ArrayList<>();
         for (String u : unknown) {
             StringBuilder line = new StringBuilder("- ").append(u);
             String iri = u.substring(u.indexOf(": ") + 2);
-            // Suggesties uit lookup_term: alles na de "Niet gevonden"-regel.
+            // Suggestions from lookup_term: everything after the "Not found" line.
             index.lookup(iri).lines().skip(1)
                     .forEach(s -> line.append("\n    ").append(s));
             lines.add(line.toString());
@@ -128,12 +147,12 @@ public final class DataValidator {
 
     private Model inference(Model data, StringBuilder sb) {
         if (rules == null) {
-            sb.append("\n[INFERENTIE] overgeslagen (geen --rules)\n");
+            sb.append("\n[INFERENCE] skipped (no --rules)\n");
             return data;
         }
         InfModel inf = ModelFactory.createInfModel(new GenericRuleReasoner(rules).bindSchema(structural), data);
         Model result = ModelFactory.createDefaultModel().add(data).add(inf.getDeductionsModel());
-        sb.append("\n[INFERENTIE] ").append(result.size() - data.size()).append(" afgeleide triples\n");
+        sb.append("\n[INFERENCE] ").append(result.size() - data.size()).append(" inferred triples\n");
         return result;
     }
 
@@ -145,32 +164,46 @@ public final class DataValidator {
             sb.append("\n[OWL] consistent\n");
             return;
         }
-        sb.append("\n[MODEL INVALID] ").append(lines.size()).append(" melding(en)")
-                .append(report.isValid() ? " (enkel waarschuwingen)" : "").append('\n');
+        sb.append("\n[MODEL INVALID] ").append(lines.size()).append(" message(s)")
+                .append(report.isValid() ? " (warnings only)" : "").append('\n');
         appendCapped(sb, lines);
     }
 
     private void shacl(Model data, StringBuilder sb) {
         if (shapes == null) {
-            sb.append("\n[SHACL] overgeslagen (geen --shapes)\n");
+            sb.append("\n[SHACL] skipped (no --shapes or --generate-shapes)\n");
             return;
         }
         ValidationReport report = ShaclValidator.get().validate(shapes, data.getGraph());
         if (report.conforms()) {
-            sb.append("\n[SHACL] conform\n");
+            sb.append("\n[SHACL] conforms\n");
             return;
         }
         List<String> lines = new ArrayList<>();
         report.getEntries().forEach(e -> lines.add("- " + data.shortForm(e.focusNode().toString())
-                + "  pad: " + (e.resultPath() == null ? "-" : shorten(data, e.resultPath().toString()))
+                + "  path: " + (e.resultPath() == null ? "-" : shorten(data, e.resultPath().toString()))
                 + "  — " + e.message()));
-        sb.append("\n[SHACL] ").append(lines.size()).append(" schending(en)\n");
+        sb.append("\n[SHACL] ").append(lines.size()).append(" violation(s)\n");
         appendCapped(sb, lines);
     }
 
-    // ---------------------------------------------------------------- hulpfuncties
+    // ---------------------------------------------------------------- helpers
 
-    /** Deelset van de ontologie met enkel de gegeven predicaten, zonder blank nodes. */
+    private static Shapes shapes(Model ontology, Path file, boolean generate) {
+        if (file == null && !generate) {
+            return null;
+        }
+        Model all = ModelFactory.createDefaultModel();
+        if (generate) {
+            all.add(ShaclGenerator.generate(ontology));
+        }
+        if (file != null) {
+            all.add(RDFDataMgr.loadModel(file.toString()));
+        }
+        return Shapes.parse(all);
+    }
+
+    /** Subset of the ontology with only the given predicates, without blank nodes. */
     private static Model subset(Model source, Property... predicates) {
         Model subset = ModelFactory.createDefaultModel();
         for (Property p : predicates) {
@@ -184,9 +217,13 @@ public final class DataValidator {
     }
 
     /**
-     * {@code owl:disjointWith} plus de paren uit {@code owl:AllDisjointClasses} en
-     * {@code owl:disjointUnionOf}. Die laatste twee gebruiken een RDF-lijst (blank nodes) en zouden
-     * anders uit de deelset vallen; OWLMiniReasoner kent enkel {@code owl:disjointWith}.
+     * Collects the class disjointness axioms that OWLMiniReasoner can use: {@code owl:disjointWith}
+     * plus the pairs from {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}. The latter
+     * two use an RDF list (blank nodes) and would otherwise drop out of the subset; OWLMiniReasoner
+     * only understands {@code owl:disjointWith}.
+     *
+     * @param source the ontologies
+     * @return a model with only {@code owl:disjointWith} triples between named classes
      */
     static Model disjointness(Model source) {
         Model subset = subset(source, OWL.disjointWith);
@@ -215,11 +252,11 @@ public final class DataValidator {
     private static void appendCapped(StringBuilder sb, List<String> lines) {
         lines.stream().limit(MAX_MESSAGES).forEach(l -> sb.append(l).append('\n'));
         if (lines.size() > MAX_MESSAGES) {
-            sb.append("… en nog ").append(lines.size() - MAX_MESSAGES).append(" meldingen\n");
+            sb.append("… and ").append(lines.size() - MAX_MESSAGES).append(" more messages\n");
         }
     }
 
-    /** IRI's in een vrije tekst (OWL-meldingen) inkorten met de prefixen van het databestand. */
+    /** Shortens IRIs in free text (OWL messages) using the prefixes of the data file. */
     private static String shorten(PrefixMapping prefixes, String text) {
         String out = text;
         for (var e : prefixes.getNsPrefixMap().entrySet()) {

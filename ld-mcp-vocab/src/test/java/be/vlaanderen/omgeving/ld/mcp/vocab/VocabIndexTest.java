@@ -38,13 +38,13 @@ class VocabIndexTest {
     void lookupKnownTerm() {
         String out = index.lookup("sosa:Sample");
         assertTrue(out.contains("subClassOf: sosa:FeatureOfInterest"), out);
-        assertTrue(out.contains("subklassen: sosa:SpatialSample"), out);
+        assertTrue(out.contains("subclasses: sosa:SpatialSample"), out);
     }
 
     @Test
     void lookupSuggestsOtherNamespace() {
         String out = index.lookup("ssn:implements");
-        assertTrue(out.startsWith("Niet gevonden"), out);
+        assertTrue(out.startsWith("Not found"), out);
         assertTrue(out.contains("sosa:implements"), out);
     }
 

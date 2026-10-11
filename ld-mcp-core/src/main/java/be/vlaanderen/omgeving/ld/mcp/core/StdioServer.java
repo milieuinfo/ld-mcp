@@ -14,14 +14,23 @@ import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
 
 /**
- * Start een MCP-server over stdio. Stdout is voorbehouden voor JSON-RPC: alle logging moet naar
- * stderr (zie logback.xml in de servermodules). De server stopt wanneer de client stdin sluit.
+ * Starts an MCP server over stdio. Stdout is reserved for JSON-RPC: all logging must go to
+ * stderr (see logback.xml in the server modules). The server stops when the client closes stdin.
  */
 public final class StdioServer {
 
     private StdioServer() {
     }
 
+    /**
+     * Runs the server until the client closes stdin, then exits the JVM.
+     *
+     * @param name         server name reported to the client
+     * @param version      server version reported to the client
+     * @param instructions guidance for the model on when and how to use the tools
+     * @param tools        the tools the server offers
+     * @throws InterruptedException if the thread is interrupted while waiting for stdin to close
+     */
     public static void run(String name, String version, String instructions,
                            List<SyncToolSpecification> tools) throws InterruptedException {
         CountDownLatch stdinClosed = new CountDownLatch(1);
@@ -40,7 +49,7 @@ public final class StdioServer {
         System.exit(0);
     }
 
-    /** Signaleert het einde van stdin (client weg), zodat het proces niet blijft hangen. */
+    /** Signals the end of stdin (client gone), so that the process does not linger. */
     private static final class EofSignallingStream extends FilterInputStream {
 
         private final CountDownLatch eof;

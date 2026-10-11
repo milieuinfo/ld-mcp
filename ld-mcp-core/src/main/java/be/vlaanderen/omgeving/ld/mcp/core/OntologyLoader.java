@@ -17,16 +17,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Laadt RDF-bestanden en -mappen (recursief) in één Jena-model. Bestanden die niet parsen worden
- * gelogd en overgeslagen, zodat één fout bestand de server niet blokkeert.
+ * Loads RDF files and directories (recursively) into a single Jena model. Files that fail to
+ * parse are logged and skipped, so that one faulty file does not prevent the server from starting.
  */
 public final class OntologyLoader {
 
     private static final Logger LOG = LoggerFactory.getLogger(OntologyLoader.class);
 
     /**
-     * Extensies die als ontologie opgeladen worden. Geen .xml (vaak configuratie, bv. logback.xml)
-     * en geen .trig/.nq (datasets).
+     * Extensions that are loaded as ontologies. Not .xml (often configuration, e.g. logback.xml)
+     * and not .trig/.nq (datasets).
      */
     private static final Set<String> SUPPORTED =
             Set.of(".ttl", ".rdf", ".owl", ".nt", ".n3", ".jsonld");
@@ -34,14 +34,27 @@ public final class OntologyLoader {
     private OntologyLoader() {
     }
 
+    /**
+     * Loads all supported RDF files under the given paths into one model.
+     *
+     * @param paths files and/or directories; directories are walked recursively
+     * @return a new model with the triples of all files that parsed successfully, and the first
+     *         declaration of every non-empty namespace prefix
+     */
     public static Model load(List<Path> paths) {
         Model model = ModelFactory.createDefaultModel();
         files(paths).forEach(file -> read(model, file));
-        LOG.info("{} triples geladen uit {}", model.size(), paths);
+        LOG.info("{} triples loaded from {}", model.size(), paths);
         return model;
     }
 
-    /** De bestanden die {@link #load} zou inlezen, in dezelfde volgorde. */
+    /**
+     * Lists the files that {@link #load(List)} would read, in the same order. Paths that do not
+     * exist are logged and ignored.
+     *
+     * @param paths files and/or directories; directories are walked recursively
+     * @return the supported RDF files, sorted per directory
+     */
     public static List<Path> files(List<Path> paths) {
         List<Path> result = new ArrayList<>();
         for (Path path : paths) {
@@ -57,7 +70,7 @@ public final class OntologyLoader {
             } else if (Files.isRegularFile(path)) {
                 result.add(path);
             } else {
-                LOG.warn("Pad bestaat niet: {}", path);
+                LOG.warn("Path does not exist: {}", path);
             }
         }
         return result;
@@ -71,17 +84,17 @@ public final class OntologyLoader {
     private static void read(Model model, Path file) {
         try {
             Model part = RDFDataMgr.loadModel(file.toString());
-            // Enkel triples kopiëren: Model.add(Model) neemt ook de prefixen over (incl. het lege).
+            // Copy the triples only: Model.add(Model) would also copy the prefixes (including the empty one).
             part.getGraph().find().forEach(model.getGraph()::add);
-            // Eerste declaratie van een prefix wint; latere bestanden overschrijven niet.
-            // Het lege prefix is per bestand verschillend en dus niet bruikbaar.
+            // The first declaration of a prefix wins; later files do not override it.
+            // The empty prefix differs from file to file and is therefore of no use.
             part.getNsPrefixMap().forEach((prefix, ns) -> {
                 if (!prefix.isEmpty() && model.getNsPrefixURI(prefix) == null) {
                     model.setNsPrefix(prefix, ns);
                 }
             });
         } catch (RuntimeException e) {
-            LOG.warn("Overgeslagen (parsefout): {} — {}", file, e.getMessage());
+            LOG.warn("Skipped (parse error): {} — {}", file, e.getMessage());
         }
     }
 }

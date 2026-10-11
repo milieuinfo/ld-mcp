@@ -12,7 +12,7 @@
   <packaging>pom</packaging>
 
   <name>ld-mcp</name>
-  <description>Linked data MCP-servers (Apache Jena) voor gebruik in andere projecten</description>
+  <description>Linked data MCP servers (Apache Jena) for use in other projects</description>
 
   <modules>
     <module>ld-mcp-core</module>
@@ -58,7 +58,7 @@
         <version>${jena.version}</version>
       </dependency>
 
-      <!-- Logging (enkel naar stderr: stdout is voorbehouden voor JSON-RPC) -->
+      <!-- Logging (to stderr only: stdout is reserved for JSON-RPC) -->
       <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>

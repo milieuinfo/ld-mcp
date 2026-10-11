@@ -1,5 +1,5 @@
 <configuration>
-  <!-- Stdout is voorbehouden voor MCP JSON-RPC: alle logging naar stderr. -->
+  <!-- Stdout is reserved for MCP JSON-RPC: all logging goes to stderr. -->
   <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
     <target>System.err</target>
     <encoder>

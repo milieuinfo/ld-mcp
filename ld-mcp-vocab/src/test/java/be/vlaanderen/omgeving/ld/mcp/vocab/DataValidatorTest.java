@@ -23,7 +23,7 @@ class DataValidatorTest {
             @prefix ex:   <https://example.org/> .
 
             [] a owl:AllDisjointClasses ; owl:members ( ex:A ex:B ex:C ) .
-            ex:Totaal owl:disjointUnionOf ( ex:D ex:E ) .
+            ex:Whole owl:disjointUnionOf ( ex:D ex:E ) .
             prov:Activity a owl:Class ; owl:disjointWith prov:Entity .
             prov:Entity a owl:Class .
             sosa:Observation a owl:Class ; rdfs:subClassOf prov:Activity .
@@ -49,7 +49,7 @@ class DataValidatorTest {
         Model ontology = ModelFactory.createDefaultModel();
         ontology.read(new StringReader(ONTOLOGY), null, "TTL");
         Path rules = withRules ? Files.writeString(dir.resolve("r.rules"), RULES) : null;
-        return new DataValidator(ontology, new VocabIndex(ontology), rules, null);
+        return new DataValidator(ontology, new VocabIndex(ontology), rules, null, false);
     }
 
     private String data(String ttl) throws IOException {
@@ -65,7 +65,7 @@ class DataValidatorTest {
 
     @Test
     void disjointViolationAfterInference() throws IOException {
-        // hasInputValue naar een observatie: Activity én (via range) Entity.
+        // hasInputValue pointing to an observation: Activity and (via the range) Entity.
         String out = validator(true).validate(data("""
                 ex:a a sosa:Observation ; sosa:hasInputValue ex:b .
                 ex:b a sosa:Observation .
@@ -91,18 +91,18 @@ class DataValidatorTest {
     @Test
     void validWithoutRulesSkipsInference() throws IOException {
         String out = validator(false).validate(data("ex:a a sosa:Observation ."));
-        assertTrue(out.contains("[INFERENTIE] overgeslagen"), out);
+        assertTrue(out.contains("[INFERENCE] skipped"), out);
         assertTrue(out.contains("[OWL] consistent"), out);
-        assertTrue(out.contains("[SHACL] overgeslagen"), out);
+        assertTrue(out.contains("[SHACL] skipped"), out);
     }
 
     @Test
     void parseErrorIsReported() throws IOException {
-        assertTrue(validator(false).validate(data("ex:a a .")).startsWith("PARSEFOUT"));
+        assertTrue(validator(false).validate(data("ex:a a .")).startsWith("PARSE ERROR"));
     }
 
     @Test
     void missingFileIsError() {
-        assertThrows(IllegalArgumentException.class, () -> validator(false).validate("bestaat/niet.ttl"));
+        assertThrows(IllegalArgumentException.class, () -> validator(false).validate("does/not/exist.ttl"));
     }
 }

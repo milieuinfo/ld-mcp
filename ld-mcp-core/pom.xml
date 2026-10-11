@@ -14,7 +14,7 @@
 
   <artifactId>ld-mcp-core</artifactId>
   <name>ld-mcp-core</name>
-  <description>Gedeelde bootstrap: stdio-transport, argumenten, ontologieën laden</description>
+  <description>Shared bootstrap: stdio transport, arguments, ontology loading</description>
 
   <dependencies>
     <dependency>

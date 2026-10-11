@@ -25,10 +25,10 @@ class WorkspaceTest {
 
     private Workspace workspace(Path rules) throws IOException {
         Files.writeString(dir.resolve("onto.ttl"), PREFIXES + "sosa:Sample a owl:Class .");
-        return new Workspace(List.of(dir), rules, null);
+        return new Workspace(List.of(dir), rules, null, false);
     }
 
-    /** Wijzigingsdatum expliciet verzetten: bestandssystemen hebben soms een grove resolutie. */
+    /** Move the modification time explicitly: some file systems have a coarse resolution. */
     private static void touch(Path file) throws IOException {
         Files.setLastModifiedTime(file,
                 FileTime.fromMillis(Files.getLastModifiedTime(file).toMillis() + 2000));
@@ -44,7 +44,7 @@ class WorkspaceTest {
     void changedOntologyIsReloaded() throws IOException {
         Workspace ws = workspace(null);
         Workspace.State before = ws.current();
-        assertTrue(before.index().lookup("sosa:Platform").startsWith("Niet gevonden"));
+        assertTrue(before.index().lookup("sosa:Platform").startsWith("Not found"));
 
         Path onto = dir.resolve("onto.ttl");
         Files.writeString(onto, PREFIXES + "sosa:Sample a owl:Class . sosa:Platform a owl:Class .");
@@ -68,7 +68,7 @@ class WorkspaceTest {
     void otherFilesAreIgnored() throws IOException {
         Workspace ws = workspace(null);
         Workspace.State before = ws.current();
-        Files.writeString(dir.resolve("README.md"), "geen ontologie");
+        Files.writeString(dir.resolve("README.md"), "not an ontology");
         assertSame(before, ws.current());
     }
 

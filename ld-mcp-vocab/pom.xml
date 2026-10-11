@@ -14,7 +14,7 @@
 
   <artifactId>ld-mcp-vocab</artifactId>
   <name>ld-mcp-vocab</name>
-  <description>MCP-server: termen opzoeken in een set ontologieën (lookup_term, search_terms)</description>
+  <description>MCP server: look up terms in a set of ontologies and validate data files (lookup_term, search_terms, validate_file)</description>
 
   <dependencies>
     <dependency>
@@ -33,7 +33,7 @@
 
   <build>
     <plugins>
-      <!-- Fat jar: java -jar ld-mcp-vocab.jar -ontologies <map> -->
+      <!-- Fat jar, run with: java -jar ld-mcp-vocab.jar (see README for the arguments) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -47,7 +47,7 @@
               <finalName>ld-mcp-vocab</finalName>
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <transformers>
-                <!-- Jena registreert zich via ServiceLoader -->
+                <!-- Jena registers itself through ServiceLoader -->
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>be.vlaanderen.omgeving.ld.mcp.vocab.VocabServer</mainClass>

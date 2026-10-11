@@ -1,7 +1,6 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,45 +15,61 @@ import org.slf4j.LoggerFactory;
 import be.vlaanderen.omgeving.ld.mcp.core.OntologyLoader;
 
 /**
- * Houdt de ingelezen ontologieën, regels en shapes bij, en leest ze opnieuw in zodra een bestand
- * toegevoegd, verwijderd of gewijzigd is. Bij elke oproep van {@link #current()} wordt een
- * vingerafdruk (pad → grootte + wijzigingsdatum) vergeleken met die van de laatste keer inlezen.
+ * Keeps track of the loaded ontologies, rules and shapes, and reloads them as soon as a file has
+ * been added, removed or modified. Every call to {@link #current()} compares a fingerprint
+ * (path → size + last-modified time) with the one taken at the last load.
  */
 public final class Workspace {
 
     private static final Logger LOG = LoggerFactory.getLogger(Workspace.class);
 
-    /** Wat de tools nodig hebben; wordt als geheel vervangen bij herladen. */
+    /**
+     * What the tools need; replaced as a whole on reload.
+     *
+     * @param index     index over the loaded ontologies
+     * @param validator validator built from the same ontologies, rules and shapes
+     */
     public record State(VocabIndex index, DataValidator validator) {
     }
 
     private final List<Path> ontologies;
     private final Path rules;
     private final Path shapes;
+    private final boolean generateShapes;
 
     private Map<Path, String> fingerprint;
     private State state;
 
     /**
-     * @param rules  Jena-regelbestand, of {@code null}
-     * @param shapes SHACL-shapesbestand, of {@code null}
+     * Nothing is loaded until the first call to {@link #current()}.
+     *
+     * @param ontologies     ontology files and/or directories (walked recursively)
+     * @param rules          Jena rules file, or {@code null}
+     * @param shapes         SHACL shapes file, or {@code null}
+     * @param generateShapes generate shapes from the ontology, afresh on every reload
      */
-    public Workspace(List<Path> ontologies, Path rules, Path shapes) {
+    public Workspace(List<Path> ontologies, Path rules, Path shapes, boolean generateShapes) {
         this.ontologies = ontologies;
         this.rules = rules;
         this.shapes = shapes;
+        this.generateShapes = generateShapes;
     }
 
-    /** De actuele toestand; herleest alles als er sinds de vorige keer iets gewijzigd is. */
+    /**
+     * Returns the state for the files as they are now on disk.
+     *
+     * @return the current state; everything is reloaded if anything has changed since the
+     *         previous call
+     */
     public synchronized State current() {
         Map<Path, String> now = fingerprint();
         if (!now.equals(fingerprint)) {
             if (fingerprint != null) {
-                LOG.info("Wijziging gedetecteerd, opnieuw inlezen");
+                LOG.info("Change detected, reloading");
             }
             Model ontology = OntologyLoader.load(ontologies);
             VocabIndex index = new VocabIndex(ontology);
-            state = new State(index, new DataValidator(ontology, index, rules, shapes));
+            state = new State(index, new DataValidator(ontology, index, rules, shapes, generateShapes));
             fingerprint = now;
         }
         return state;
@@ -73,7 +88,7 @@ public final class Workspace {
                 result.put(file.toAbsolutePath(),
                         Files.size(file) + "@" + Files.getLastModifiedTime(file).toMillis());
             } catch (IOException e) {
-                // Verdwenen tussen opsommen en lezen, of onleesbaar: telt als wijziging.
+                // Disappeared between listing and reading, or unreadable: counts as a change.
                 result.put(file.toAbsolutePath(), "?");
             }
         }
