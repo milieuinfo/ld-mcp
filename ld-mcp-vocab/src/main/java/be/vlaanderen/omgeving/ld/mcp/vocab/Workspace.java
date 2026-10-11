@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.jena.rdf.model.Model;
 import org.slf4j.Logger;
@@ -15,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import be.vlaanderen.omgeving.ld.mcp.core.OntologyLoader;
 
 /**
- * Keeps track of the loaded ontologies, rules and shapes, and reloads them as soon as a file has
+ * Keeps track of the loaded ontologies, rules, shapes and prefix registry, and reloads them as soon as a file has
  * been added, removed or modified. Every call to {@link #current()} compares a fingerprint
  * (path → size + last-modified time) with the one taken at the last load.
  */
@@ -36,6 +37,7 @@ public final class Workspace {
     private final Path rules;
     private final Path shapes;
     private final boolean generateShapes;
+    private final Path prefixRegistry;
 
     private Map<Path, String> fingerprint;
     private State state;
@@ -47,12 +49,16 @@ public final class Workspace {
      * @param rules          Jena rules file, or {@code null}
      * @param shapes         SHACL shapes file, or {@code null}
      * @param generateShapes generate shapes from the ontology, afresh on every reload
+     * @param prefixRegistry JSON file mapping prefixes to namespaces (see {@link PrefixRegistry}),
+     *                       or {@code null}
      */
-    public Workspace(List<Path> ontologies, Path rules, Path shapes, boolean generateShapes) {
+    public Workspace(List<Path> ontologies, Path rules, Path shapes, boolean generateShapes,
+                     Path prefixRegistry) {
         this.ontologies = ontologies;
         this.rules = rules;
         this.shapes = shapes;
         this.generateShapes = generateShapes;
+        this.prefixRegistry = prefixRegistry;
     }
 
     /**
@@ -67,17 +73,39 @@ public final class Workspace {
             if (fingerprint != null) {
                 LOG.info("Change detected, reloading");
             }
-            Model ontology = OntologyLoader.load(ontologies);
+            Model ontology = OntologyLoader.load(ontologies, excluded());
             VocabIndex index = new VocabIndex(ontology);
-            state = new State(index, new DataValidator(ontology, index, rules, shapes, generateShapes));
+            state = new State(index, new DataValidator(ontology, index, rules, shapes, generateShapes,
+                    registry()));
             fingerprint = now;
         }
         return state;
     }
 
+    /** Files under the ontology paths that are not ontologies: the prefix registry. */
+    private Set<Path> excluded() {
+        return prefixRegistry == null ? Set.of() : Set.of(prefixRegistry);
+    }
+
+    /** The prefix registry, or {@code null} if none is configured or it cannot be read. */
+    private PrefixRegistry registry() {
+        if (prefixRegistry == null) {
+            return null;
+        }
+        try {
+            PrefixRegistry registry = PrefixRegistry.load(prefixRegistry);
+            LOG.info("{} namespaces loaded from prefix registry {}", registry.size(), prefixRegistry);
+            return registry;
+        } catch (IllegalArgumentException e) {
+            // Only hints depend on the registry; validation goes on without it.
+            LOG.warn("Prefix registry skipped: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private Map<Path, String> fingerprint() {
-        List<Path> files = new ArrayList<>(OntologyLoader.files(ontologies));
-        for (Path extra : new Path[] {rules, shapes}) {
+        List<Path> files = new ArrayList<>(OntologyLoader.files(ontologies, excluded()));
+        for (Path extra : new Path[] {rules, shapes, prefixRegistry}) {
             if (extra != null) {
                 files.add(extra);
             }

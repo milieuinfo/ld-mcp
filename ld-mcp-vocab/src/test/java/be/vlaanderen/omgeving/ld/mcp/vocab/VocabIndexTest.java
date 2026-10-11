@@ -24,6 +24,10 @@ class VocabIndexTest {
             sosa:implements a owl:ObjectProperty ;
                 rdfs:comment "A relation between an entity and a Procedure."@en .
             ssn:System a owl:Class .
+            <http://qudt.org/vocab/unit/M> a <http://qudt.org/schema/qudt/Unit> ; rdfs:label "Metre"@en .
+            <https://example.org/eenheid/E_131> a <http://www.w3.org/2004/02/skos/core#Concept> ;
+                <http://www.w3.org/2004/02/skos/core#prefLabel> "milligram fosfor per liter"@nl ;
+                <http://www.w3.org/2004/02/skos/core#broadMatch> <http://qudt.org/vocab/unit/MilliGM-PER-L> .
             """;
 
     private final VocabIndex index = new VocabIndex(model());
@@ -42,6 +46,13 @@ class VocabIndexTest {
     }
 
     @Test
+    void lookupShowsSkosMappingsAndNoDuplicateIri() {
+        String out = index.lookup("https://example.org/eenheid/E_131");
+        assertTrue(out.startsWith("<https://example.org/eenheid/E_131>\n"), out);
+        assertTrue(out.contains("broadMatch: <http://qudt.org/vocab/unit/MilliGM-PER-L>"), out);
+    }
+
+    @Test
     void lookupSuggestsOtherNamespace() {
         String out = index.lookup("ssn:implements");
         assertTrue(out.startsWith("Not found"), out);
@@ -51,6 +62,12 @@ class VocabIndexTest {
     @Test
     void unknownPrefixIsError() {
         assertThrows(IllegalArgumentException.class, () -> index.lookup("foo:Bar"));
+    }
+
+    @Test
+    void searchRanksExactLabelFirst() {
+        String out = index.search("metre", 10);
+        assertTrue(out.startsWith("1 hit(s):\n- <http://qudt.org/vocab/unit/M>"), out);
     }
 
     @Test

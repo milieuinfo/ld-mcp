@@ -20,8 +20,9 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 
 /**
- * Looks up classes and properties in a loaded set of ontologies. Returns text intended for a
- * language model: compact, with prefixed names where possible.
+ * Looks up classes, properties and named individuals (e.g. QUDT units) in a loaded set of
+ * ontologies. Returns text intended for a language model: compact, with prefixed names where
+ * possible.
  */
 public final class VocabIndex {
 
@@ -38,7 +39,7 @@ public final class VocabIndex {
     private final List<Resource> terms;
 
     /**
-     * Builds the index of all classes and properties in the model.
+     * Builds the index of all classes, properties and named individuals in the model.
      *
      * @param model the loaded ontologies; its namespace prefixes are used to expand and shorten IRIs
      */
@@ -50,6 +51,12 @@ public final class VocabIndex {
                     .filterKeep(Resource::isURIResource)
                     .forEachRemaining(found::add);
         }
+        // Named individuals, such as units (qudt:Unit) or concepts, but not ontology headers.
+        model.listStatements(null, RDF.type, (RDFNode) null).forEachRemaining(st -> {
+            if (st.getSubject().isURIResource() && !st.getObject().equals(OWL.Ontology)) {
+                found.add(st.getSubject());
+            }
+        });
         // Also terms that are only declared through subClassOf/subPropertyOf/domain/range.
         for (Property p : List.of(RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)) {
             model.listSubjectsWithProperty(p)
@@ -70,7 +77,8 @@ public final class VocabIndex {
 
     /**
      * Describes one term: type, label, definition, superclasses and superproperties, domain,
-     * range, inverse, equivalents, disjoint classes and subterms.
+     * range, inverse, equivalents, disjoint classes, SKOS mappings (for concepts such as units in a
+     * code list) and subterms.
      *
      * @param term a prefixed name ({@code sosa:Observation}) or a full IRI
      * @return the description, or a "Not found" message followed by suggestions (the same local
@@ -86,7 +94,8 @@ public final class VocabIndex {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(shortForm(iri)).append("  <").append(iri).append(">\n");
+        String shortForm = shortForm(iri);
+        sb.append(shortForm.equals("<" + iri + ">") ? shortForm : shortForm + "  <" + iri + ">").append('\n');
         section(sb, "type", objects(r, RDF.type));
         section(sb, "label", literals(r, RDFS.label, SKOS.prefLabel));
         section(sb, "definition", literals(r, SKOS.definition, RDFS.comment, DCT_DESCRIPTION));
@@ -98,14 +107,19 @@ public final class VocabIndex {
         section(sb, "equivalent", objects(r, OWL.equivalentClass, OWL.equivalentProperty));
         section(sb, "disjointWith", objects(r, OWL.disjointWith));
         section(sb, "isDefinedBy", objects(r, RDFS.isDefinedBy));
+        section(sb, "exactMatch", objects(r, SKOS.exactMatch));
+        section(sb, "closeMatch", objects(r, SKOS.closeMatch));
+        section(sb, "broadMatch", objects(r, SKOS.broadMatch));
+        section(sb, "narrowMatch", objects(r, SKOS.narrowMatch));
         section(sb, "subclasses", subjects(RDFS.subClassOf, r));
         section(sb, "subproperties", subjects(RDFS.subPropertyOf, r));
         return sb.toString();
     }
 
     /**
-     * Finds terms whose local name or label contains the query (case-insensitive). Exact matches
-     * on the local name come first, then local names that start with the query, then the rest.
+     * Finds classes, properties and named individuals whose local name or label contains the query
+     * (case-insensitive). Exact matches on the local name or a label come first, then names or
+     * labels that start with the query, then the rest.
      *
      * @param query the text to search for
      * @param limit the maximum number of results to list
@@ -196,13 +210,18 @@ public final class VocabIndex {
                         .anyMatch(l -> l.toLowerCase(Locale.ROOT).contains(q));
     }
 
-    /** Exact local name first, then starts-with, then the rest. */
+    /** Exact local name or label first, then names or labels that start with the query, then the rest. */
     private int rank(Resource t, String q) {
-        String local = localName(t.getURI()).toLowerCase(Locale.ROOT);
-        if (local.equals(q)) {
+        List<String> names = new ArrayList<>();
+        names.add(localName(t.getURI()).toLowerCase(Locale.ROOT));
+        for (Property p : List.of(RDFS.label, SKOS.prefLabel)) {
+            model.listObjectsOfProperty(t, p).filterKeep(RDFNode::isLiteral).forEachRemaining(l ->
+                    names.add(l.asLiteral().getLexicalForm().strip().toLowerCase(Locale.ROOT)));
+        }
+        if (names.stream().anyMatch(q::equals)) {
             return 0;
         }
-        return local.startsWith(q) ? 1 : 2;
+        return names.stream().anyMatch(n -> n.startsWith(q)) ? 1 : 2;
     }
 
     private String labelSuffix(Resource t) {

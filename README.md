@@ -15,9 +15,9 @@ projects (e.g. OSLO themes). Each server runs locally as a process over **stdio*
 
 | Tool | Purpose |
 |---|---|
-| `lookup_term` | Describes one class or property (type, label, definition, subClassOf/subPropertyOf, domain, range, inverseOf, subterms). If the term does not exist, suggestions follow, e.g. `ssn:implements` → `sosa:implements`. |
-| `search_terms` | Finds terms by local name or label (case-insensitive). |
-| `validate_file` | Validates an RDF data file: unknown properties/classes (with suggestions from `lookup_term`), rule inference (`--rules`), OWL consistency with OWLMiniReasoner on the `owl:disjointWith` subset (including `owl:AllDisjointClasses` and `owl:disjointUnionOf`, expanded into pairs), and SHACL (`--generate-shapes` and/or `--shapes`) on the original model. |
+| `lookup_term` | Describes one class, property or concept (type, label, definition, subClassOf/subPropertyOf, domain, range, inverseOf, SKOS mappings such as `broadMatch` to a QUDT unit, subterms). If the term does not exist, suggestions follow, e.g. `ssn:implements` → `sosa:implements`. |
+| `search_terms` | Finds classes, properties and named individuals (e.g. QUDT units) by local name or label (case-insensitive); exact matches first, so `metre` finds `unit:M`. |
+| `validate_file` | Validates an RDF data file: unknown properties, classes and other IRIs in a vocabulary namespace such as `unit:` (with suggestions from `lookup_term`, and hints for `http`/`https` and `#`/`/` near misses), resources minted by the data in a vocabulary namespace, rule inference (`--rules`), OWL consistency with OWLMiniReasoner on the `owl:disjointWith` subset (including `owl:AllDisjointClasses` and `owl:disjointUnionOf`, expanded into pairs), and SHACL (`--generate-shapes` and/or `--shapes`) on the original model. |
 
 Arguments:
 
@@ -27,8 +27,9 @@ Arguments:
 | `--rules <file>` | no | Jena rules file for the inference step of `validate_file`; if absent, that step is skipped |
 | `--generate-shapes` | no | Generate SHACL shapes for `validate_file` from the OWL restrictions in the ontologies (see below) |
 | `--shapes <file>` | no | Additional (e.g. hand-written) SHACL shapes for `validate_file`. Without `--shapes` and `--generate-shapes` the SHACL step is skipped |
+| `--prefix-registry <file>` | no | RDF file whose prefix declarations serve as a registry of well-known namespaces, e.g. a download of [prefix.cc/popular/all.file.ttl](http://prefix.cc/popular/all.file.ttl); any syntax Jena reads will do, triples are ignored. Lets `validate_file` tell a vocabulary that exists but is not loaded from a namespace that is not known at all (see below). It is never loaded as an ontology, even if it lies under `--ontologies` (other tools that read that directory, such as a build pipeline, may not be so careful). Not bundled with the jar: the project decides which snapshot it uses. If it cannot be read, a warning is logged and validation goes on without it |
 
-Ontologies, rules and shapes are loaded at start-up. On every tool call the server compares the
+Ontologies, rules, shapes and the prefix registry are loaded at start-up. On every tool call the server compares the
 path, size and modification time of those files with the previous load; if anything has been
 added, removed or modified, it reloads everything and regenerates the shapes. A restart is only
 needed after building a new jar.
@@ -39,10 +40,39 @@ needed after building a new jar.
 
 | Marker | Meaning |
 |---|---|
-| `[VOCAB] ok` / `[VOCAB ERROR]` | Every predicate and `rdf:type` object occurs in the ontologies / unknown terms, with suggestions |
+| `[VOCAB] ok` / `[VOCAB ERROR]` | Every predicate, every `rdf:type` object and every other IRI in a vocabulary namespace occurs in the ontologies / unknown terms, with suggestions |
 | `[INFERENCE]` | Number of triples inferred by the rules, or `skipped` |
 | `[OWL] consistent` / `[MODEL INVALID]` | OWL consistency after inference / disjointness violations |
-| `[SHACL] conforms` / `[SHACL] n violation(s)` | SHACL result, or `skipped` |
+| `[SHACL] conforms` / `[SHACL] n violation(s), m warning(s)` | SHACL result, or `skipped`. Results are grouped by `sh:severity`: violations first, then warnings and info, marked `[warning]`/`[info]`. Note that `sh:severity` belongs on the shape, not on an `sh:sparql` constraint |
+
+A *vocabulary namespace* is any namespace (IRI up to the last `#` or `/`) in which the ontologies
+define resources. Under `[VOCAB ERROR]`:
+
+- `Unknown property` / `Unknown class`: a predicate or `rdf:type` object that the ontologies do
+  not mention;
+- `Unknown resource`: any other IRI in a vocabulary namespace that the ontologies do not mention,
+  e.g. a misspelt unit such as `unit:Meter` (the metre is `unit:M`), or an IRI in a near miss of a
+  vocabulary namespace (see below);
+- `Resource minted in a vocabulary namespace`: the data file describes a resource of its own in
+  someone else's namespace, e.g. `unit:EUR a qudt:Unit`.
+
+Near misses get a hint. If an unknown IRI differs from a known term only in the scheme
+(`https` instead of `http`, common because many sites redirect to `https` while the `http` IRI
+is the identifier) and/or the namespace separator (`#` versus `/`), the report says
+`Did you mean <http://…>?`; if only the namespace matches, it says
+`Namespace <…> is not loaded; did you mean <…>?`.
+
+With `--prefix-registry`, an unknown IRI whose namespace is not loaded (and has no loaded near
+miss) is also looked up in the registry:
+
+| Hint | Meaning |
+|---|---|
+| `… is a known vocabulary ('dcat:' in the prefix registry), but it is not loaded` | The term may well exist; add the ontology to `--ontologies` to check it |
+| `… is neither loaded nor registered; did you mean <…> ('schema:' in the prefix registry)?` | Near miss of a registered namespace |
+| `… is neither loaded nor in the prefix registry; check it for a typo, or load its ontology` | Unknown everywhere: a typo, or a vocabulary that nobody registered (common for national vocabularies) |
+
+Domains reserved for examples (`example.com`, `example.org`, `example.net`) get no registry hint;
+prefix.cc lists some of them as if they were vocabularies.
 
 A file that cannot be parsed yields `PARSE ERROR` with the position of the error.
 

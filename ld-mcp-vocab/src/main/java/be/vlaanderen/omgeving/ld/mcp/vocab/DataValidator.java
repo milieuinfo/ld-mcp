@@ -5,8 +5,12 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -27,6 +31,7 @@ import org.apache.jena.riot.RiotException;
 import org.apache.jena.shacl.ShaclValidator;
 import org.apache.jena.shacl.Shapes;
 import org.apache.jena.shacl.ValidationReport;
+import org.apache.jena.shacl.validation.Severity;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.OWL2;
@@ -37,7 +42,9 @@ import org.apache.jena.vocabulary.RDFS;
  * Validates an RDF data file against the loaded ontologies, in four steps:
  * <ol>
  *   <li>vocabulary: every predicate and every {@code rdf:type} object must occur in the
- *       ontologies;</li>
+ *       ontologies, and so must every other IRI in a namespace that the ontologies define
+ *       resources in (e.g. a QUDT unit). A data file may not mint new resources in such a
+ *       namespace either;</li>
  *   <li>rule inference (optional, {@code --rules}) with the structural subset
  *       (subClassOf, subPropertyOf, inverseOf, domain, range);</li>
  *   <li>OWL consistency with OWLMiniReasoner and the {@code owl:disjointWith} subset
@@ -56,10 +63,12 @@ public final class DataValidator {
 
     private final Model ontology;
     private final VocabIndex index;
+    private final Set<String> vocabularyNamespaces;
     private final Model structural;
     private final Reasoner owlReasoner;
     private final List<Rule> rules;
     private final Shapes shapes;
+    private final PrefixRegistry registry;
 
     /**
      * Prepares the subsets, reasoners and shapes; these are reused for every validation.
@@ -70,17 +79,23 @@ public final class DataValidator {
      * @param shapes         SHACL shapes file, or {@code null}
      * @param generateShapes generate shapes from the OWL restrictions of the ontology (combined
      *                       with {@code shapes}, if given); without either, SHACL is skipped
+     * @param registry       registry of well-known namespaces, used in hints for namespaces that
+     *                       are not loaded; or {@code null}
      */
     public DataValidator(Model ontology, VocabIndex index, Path rules, Path shapes,
-                         boolean generateShapes) {
+                         boolean generateShapes, PrefixRegistry registry) {
         this.ontology = ontology;
         this.index = index;
+        this.vocabularyNamespaces = new HashSet<>();
+        ontology.listSubjects().filterKeep(Resource::isURIResource)
+                .forEachRemaining(s -> vocabularyNamespaces.add(namespace(s.getURI())));
         this.structural = subset(ontology,
                 RDFS.subClassOf, RDFS.subPropertyOf, OWL.inverseOf, RDFS.domain, RDFS.range);
         this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()
                 .bindSchema(disjointness(ontology));
         this.rules = rules == null ? null : Rule.parseRules(read(rules));
         this.shapes = shapes(ontology, shapes, generateShapes);
+        this.registry = registry;
     }
 
     /**
@@ -126,6 +141,16 @@ public final class DataValidator {
                 if (!ontology.containsResource(ontology.createResource(c))) {
                     unknown.add("Unknown class: " + c);
                 }
+            } else if (st.getObject().isURIResource()
+                    && (isUnknownInVocabulary(st.getResource()) || isNearVocabulary(st.getResource()))) {
+                unknown.add("Unknown resource: " + st.getResource().getURI());
+            }
+            if (st.getSubject().isURIResource()) {
+                if (isUnknownInVocabulary(st.getSubject())) {
+                    unknown.add("Resource minted in a vocabulary namespace: " + st.getSubject().getURI());
+                } else if (isNearVocabulary(st.getSubject())) {
+                    unknown.add("Unknown resource: " + st.getSubject().getURI());
+                }
             }
         });
         if (unknown.isEmpty()) {
@@ -137,9 +162,15 @@ public final class DataValidator {
         for (String u : unknown) {
             StringBuilder line = new StringBuilder("- ").append(u);
             String iri = u.substring(u.indexOf(": ") + 2);
-            // Suggestions from lookup_term: everything after the "Not found" line.
-            index.lookup(iri).lines().skip(1)
-                    .forEach(s -> line.append("\n    ").append(s));
+            Hint hint = nearMiss(iri);
+            if (hint != null) {
+                line.append("\n    ").append(hint.text());
+            }
+            if (hint == null || !hint.termExists()) {
+                // Suggestions from lookup_term: everything after the "Not found" line.
+                index.lookup(iri).lines().skip(1)
+                        .forEach(s -> line.append("\n    ").append(s));
+            }
             lines.add(line.toString());
         }
         appendCapped(sb, lines);
@@ -179,12 +210,32 @@ public final class DataValidator {
             sb.append("\n[SHACL] conforms\n");
             return;
         }
+        // Violations first, then warnings, then info; only the latter two are marked.
+        Map<Severity, List<String>> bySeverity = new LinkedHashMap<>();
+        for (Severity s : List.of(Severity.Violation, Severity.Warning, Severity.Info)) {
+            bySeverity.put(s, new ArrayList<>());
+        }
+        report.getEntries().forEach(e -> bySeverity.computeIfAbsent(e.severity(), s -> new ArrayList<>())
+                .add("- " + (e.severity() == Severity.Violation ? "" : "[" + severityName(e.severity()) + "] ")
+                        + data.shortForm(e.focusNode().toString())
+                        + "  path: " + (e.resultPath() == null ? "-" : shorten(data, e.resultPath().toString()))
+                        + "  — " + e.message()));
+        List<String> counts = new ArrayList<>();
         List<String> lines = new ArrayList<>();
-        report.getEntries().forEach(e -> lines.add("- " + data.shortForm(e.focusNode().toString())
-                + "  path: " + (e.resultPath() == null ? "-" : shorten(data, e.resultPath().toString()))
-                + "  — " + e.message()));
-        sb.append("\n[SHACL] ").append(lines.size()).append(" violation(s)\n");
+        bySeverity.forEach((severity, entries) -> {
+            if (!entries.isEmpty() || severity == Severity.Violation) {
+                counts.add(entries.size() + " " + severityName(severity) + "(s)");
+            }
+            lines.addAll(entries);
+        });
+        sb.append("\n[SHACL] ").append(String.join(", ", counts)).append('\n');
         appendCapped(sb, lines);
+    }
+
+    /** "violation", "warning" or "info"; for a custom severity, its local name in lower case. */
+    private static String severityName(Severity severity) {
+        String iri = severity.level().getURI();
+        return iri.substring(Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1).toLowerCase(Locale.ROOT);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -254,6 +305,137 @@ public final class DataValidator {
         if (lines.size() > MAX_MESSAGES) {
             sb.append("… and ").append(lines.size() - MAX_MESSAGES).append(" more messages\n");
         }
+    }
+
+    /** An IRI in a namespace of the ontologies that the ontologies do not mention. */
+    private boolean isUnknownInVocabulary(Resource r) {
+        return vocabularyNamespaces.contains(namespace(r.getURI())) && !ontology.containsResource(r);
+    }
+
+    /**
+     * An IRI outside the vocabulary namespaces, whose namespace is a near miss of one of them (see
+     * {@link #variants(String)}), and that the ontologies do not mention.
+     */
+    private boolean isNearVocabulary(Resource r) {
+        String iri = r.getURI();
+        if (vocabularyNamespaces.contains(namespace(iri)) || ontology.containsResource(r)) {
+            return false;
+        }
+        return variants(iri).stream().anyMatch(v -> vocabularyNamespaces.contains(namespace(v)));
+    }
+
+    /**
+     * A hint for an unknown IRI.
+     *
+     * @param text       the hint, ready for the report
+     * @param termExists whether the hint names an existing term (which makes further suggestions
+     *                   superfluous) rather than only a namespace
+     */
+    private record Hint(String text, boolean termExists) {
+    }
+
+    /**
+     * Looks for a hint for an unknown IRI, in this order: a variant that the ontologies mention, a
+     * variant in a vocabulary namespace and, with a prefix registry, the namespace itself or a
+     * variant of it in the registry.
+     *
+     * @param iri the unknown IRI
+     * @return the hint, or {@code null} if there is nothing to add
+     */
+    private Hint nearMiss(String iri) {
+        List<String> variants = variants(iri);
+        for (String v : variants) {
+            if (ontology.containsResource(ontology.createResource(v))) {
+                return new Hint("Did you mean <" + v + ">? (differs only in " + difference(iri, v) + ")", true);
+            }
+        }
+        String ns = namespace(iri);
+        if (vocabularyNamespaces.contains(ns)) {
+            return null;
+        }
+        for (String v : variants) {
+            if (vocabularyNamespaces.contains(namespace(v))) {
+                return new Hint("Namespace <" + ns + "> is not loaded; did you mean <"
+                        + namespace(v) + ">? (differs only in " + difference(iri, v) + ")", false);
+            }
+        }
+        if (registry == null || isExampleDomain(iri)) {
+            return null;
+        }
+        List<String> known = registry.prefixes(ns);
+        if (!known.isEmpty()) {
+            return new Hint("Namespace <" + ns + "> is a known vocabulary (" + prefixNames(known)
+                    + " in the prefix registry), but it is not loaded", false);
+        }
+        for (String v : variants) {
+            List<String> prefixes = registry.prefixes(namespace(v));
+            if (!prefixes.isEmpty()) {
+                return new Hint("Namespace <" + ns + "> is neither loaded nor registered; did you mean <"
+                        + namespace(v) + "> (" + prefixNames(prefixes) + " in the prefix registry)? "
+                        + "(differs only in " + difference(iri, v) + ")", false);
+            }
+        }
+        return new Hint("Namespace <" + ns + "> is neither loaded nor in the prefix registry; "
+                + "check it for a typo, or load its ontology", false);
+    }
+
+    /**
+     * Whether an IRI is in one of the domains reserved for examples (RFC 2606). Such domains carry
+     * no vocabulary, even if somebody has registered a prefix for them.
+     */
+    private static boolean isExampleDomain(String iri) {
+        int start = iri.indexOf("://") + 3;
+        int end = iri.indexOf('/', start);
+        String host = iri.substring(start, end < 0 ? iri.length() : end).toLowerCase(Locale.ROOT);
+        return host.matches("(.+\\.)?example\\.(com|org|net)(:\\d+)?");
+    }
+
+    /** At most three prefixes as {@code 'a:', 'b:', 'c:'}, followed by an ellipsis if there are more. */
+    private static String prefixNames(List<String> prefixes) {
+        String names = String.join(", ", prefixes.stream().limit(3).map(p -> "'" + p + ":'").toList());
+        return prefixes.size() > 3 ? names + ", …" : names;
+    }
+
+    /**
+     * Variants of an IRI that differ only in the scheme ({@code http} versus {@code https}) and/or
+     * the namespace separator ({@code #} versus {@code /}). Both are common mistakes; many sites,
+     * for instance, redirect {@code http} to {@code https}, while the {@code http} IRI is the
+     * identifier.
+     *
+     * @param iri an IRI
+     * @return the variants: scheme first, then separator, then both; never the IRI itself
+     */
+    static List<String> variants(String iri) {
+        List<String> schemes = new ArrayList<>(List.of(iri));
+        if (iri.startsWith("http://")) {
+            schemes.add("https://" + iri.substring("http://".length()));
+        } else if (iri.startsWith("https://")) {
+            schemes.add("http://" + iri.substring("https://".length()));
+        }
+        List<String> result = new ArrayList<>(schemes.subList(1, schemes.size()));
+        for (String s : schemes) {
+            int sep = Math.max(s.lastIndexOf('#'), s.lastIndexOf('/'));
+            if (sep > s.indexOf("://") + 2) {
+                char other = s.charAt(sep) == '#' ? '/' : '#';
+                result.add(s.substring(0, sep) + other + s.substring(sep + 1));
+            }
+        }
+        return result;
+    }
+
+    /** Describes how a variant from {@link #variants(String)} differs from the original IRI. */
+    private static String difference(String iri, String variant) {
+        boolean scheme = iri.startsWith("https://") != variant.startsWith("https://");
+        boolean separator = !iri.substring(iri.indexOf("://")).equals(variant.substring(variant.indexOf("://")));
+        if (scheme && separator) {
+            return "http/https and '#'/'/'";
+        }
+        return scheme ? "http/https" : "'#'/'/'";
+    }
+
+    /** The namespace of an IRI: everything up to and including the last '#' or '/'. */
+    private static String namespace(String iri) {
+        return iri.substring(0, Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1);
     }
 
     /** Shortens IRIs in free text (OWL messages) using the prefixes of the data file. */

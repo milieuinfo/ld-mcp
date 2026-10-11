@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -42,8 +43,20 @@ public final class OntologyLoader {
      *         declaration of every non-empty namespace prefix
      */
     public static Model load(List<Path> paths) {
+        return load(paths, Set.of());
+    }
+
+    /**
+     * Loads all supported RDF files under the given paths into one model, except the excluded ones.
+     *
+     * @param paths   files and/or directories; directories are walked recursively
+     * @param exclude files to skip even if they lie under {@code paths} (e.g. a prefix registry)
+     * @return a new model with the triples of all files that parsed successfully, and the first
+     *         declaration of every non-empty namespace prefix
+     */
+    public static Model load(List<Path> paths, Set<Path> exclude) {
         Model model = ModelFactory.createDefaultModel();
-        files(paths).forEach(file -> read(model, file));
+        files(paths, exclude).forEach(file -> read(model, file));
         LOG.info("{} triples loaded from {}", model.size(), paths);
         return model;
     }
@@ -56,6 +69,19 @@ public final class OntologyLoader {
      * @return the supported RDF files, sorted per directory
      */
     public static List<Path> files(List<Path> paths) {
+        return files(paths, Set.of());
+    }
+
+    /**
+     * Lists the files that {@link #load(List, Set)} would read, in the same order.
+     *
+     * @param paths   files and/or directories; directories are walked recursively
+     * @param exclude files to leave out
+     * @return the supported RDF files, sorted per directory, without the excluded ones
+     */
+    public static List<Path> files(List<Path> paths, Set<Path> exclude) {
+        Set<Path> excluded = new HashSet<>();
+        exclude.forEach(p -> excluded.add(p.toAbsolutePath().normalize()));
         List<Path> result = new ArrayList<>();
         for (Path path : paths) {
             if (Files.isDirectory(path)) {
@@ -73,6 +99,7 @@ public final class OntologyLoader {
                 LOG.warn("Path does not exist: {}", path);
             }
         }
+        result.removeIf(p -> excluded.contains(p.toAbsolutePath().normalize()));
         return result;
     }
 

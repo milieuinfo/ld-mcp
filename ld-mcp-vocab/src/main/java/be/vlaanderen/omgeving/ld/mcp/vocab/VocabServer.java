@@ -10,11 +10,12 @@ import be.vlaanderen.omgeving.ld.mcp.core.Tools;
 
 /**
  * MCP server for looking up terms in a set of ontologies and validating data files.
- * Changes to ontologies, rules or shapes are picked up on the next tool call.
+ * Changes to ontologies, rules, shapes or the prefix registry are picked up on the next tool call.
  *
  * <pre>
  * java -jar ld-mcp-vocab.jar --ontologies src/main/resources [--ontologies extra.ttl]
  *     [--rules rules.rules] [--shapes shapes.ttl] [--generate-shapes]
+ *     [--prefix-registry prefixes.json]
  * </pre>
  */
 public final class VocabServer {
@@ -36,7 +37,8 @@ public final class VocabServer {
         Workspace workspace = new Workspace(paths,
                 parsed.first("rules").map(Path::of).orElse(null),
                 parsed.first("shapes").map(Path::of).orElse(null),
-                parsed.flag("generate-shapes"));
+                parsed.flag("generate-shapes"),
+                parsed.first("prefix-registry").map(Path::of).orElse(null));
         int termCount = workspace.current().index().size();
 
         StdioServer.run("ld-mcp-vocab", VERSION,
@@ -66,7 +68,8 @@ public final class VocabServer {
                                         Tools.optionalInt(a, "limit", 25))),
                         Tools.textTool("validate_file",
                                 "Validates an RDF data file (.ttl, …): unknown properties/classes "
-                                        + "(with suggestions), rule inference, OWL consistency "
+                                        + "(with suggestions, including http/https and '#'/'/' "
+                                        + "near misses), rule inference, OWL consistency "
                                         + "(owl:disjointWith) and SHACL. Modified ontologies, rules or "
                                         + "shapes are reloaded automatically.",
                                 Tools.objectSchema(
