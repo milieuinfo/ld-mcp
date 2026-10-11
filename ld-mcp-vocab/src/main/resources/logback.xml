@@ -1,0 +1,16 @@
+<configuration>
+  <!-- Stdout is voorbehouden voor MCP JSON-RPC: alle logging naar stderr. -->
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="org.apache.jena" level="WARN"/>
+  <logger name="io.modelcontextprotocol" level="WARN"/>
+
+  <root level="INFO">
+    <appender-ref ref="STDERR"/>
+  </root>
+</configuration>
