@@ -102,8 +102,11 @@ mvn package
 
 ## Use in another project
 
-Add a `.mcp.json` to the root of that project. Relative paths are resolved against the directory
-from which the client is started (the project root):
+Clone and build ld-mcp next to the project (same parent directory), then add a `.mcp.json` to the
+root of that project. Relative paths are resolved against the directory from which the client is
+started (the project root). The jar path comes from the environment variable `LD_MCP_JAR`, with a
+default that finds the clone next to the project, so that the file works for every user without
+changes:
 
 ```json
 {
@@ -111,21 +114,39 @@ from which the client is started (the project root):
     "ld-vocab": {
       "command": "java",
       "args": [
-        "-jar", "/home/<user>/git/ld-mcp/ld-mcp-vocab/target/ld-mcp-vocab.jar",
+        "-jar", "${LD_MCP_JAR:-../ld-mcp/ld-mcp-vocab/target/ld-mcp-vocab.jar}",
         "--ontologies", "src/main/resources",
         "--rules", "path/to/rules.rules",
-        "--generate-shapes"
+        "--generate-shapes",
+        "--shapes", "oslo-ld-kit/rules/ssn-sosa-rules.ttl",
+        "--prefix-registry", "path/to/prefix.cc.ttl"
       ]
     }
   }
 }
 ```
 
+A user whose clone of ld-mcp is elsewhere sets `LD_MCP_JAR` to the full path of
+`ld-mcp-vocab.jar`.
+
 Or via the CLI:
 
 ```bash
 claude mcp add ld-vocab -- java -jar /path/to/ld-mcp-vocab.jar --ontologies src/main/resources
 ```
+
+### With oslo-ld-kit
+
+The SHACL rules for SSN/SOSA data examples (R2, R3, R5, …) and the guide that explains the
+validation report are in [oslo-ld-kit](https://github.com/milieuinfo/oslo-ld-kit), not in this
+repository: the server stays project-neutral. A project adds the kit as a git subtree in
+`oslo-ld-kit/` and passes its rules with `--shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl`, as in
+the example above. Messages from those rules begin with the rule number (`R2: …`). After the kit
+has been updated in the project, the server reloads the rules on the next tool call; in the
+client, `/mcp` → `ld-vocab` → Reconnect is only needed after building a new jar. See the kit's
+README for how to add and update it, and
+[OSLOthema-SSNSOSA-VL](https://github.com/Informatievlaanderen/OSLOthema-SSNSOSA-VL) for a project that uses
+both.
 
 ## Manual testing
 
