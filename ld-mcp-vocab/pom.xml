@@ -51,6 +51,11 @@
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>be.vlaanderen.omgeving.ld.mcp.vocab.VocabServer</mainClass>
+                  <!-- Read by VocabServer to report its version in the MCP handshake -->
+                  <manifestEntries>
+                    <Implementation-Title>${project.artifactId}</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                  </manifestEntries>
                 </transformer>
               </transformers>
               <filters>

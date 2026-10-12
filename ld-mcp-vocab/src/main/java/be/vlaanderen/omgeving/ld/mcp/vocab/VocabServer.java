@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import be.vlaanderen.omgeving.ld.mcp.core.ServerArgs;
@@ -30,7 +31,14 @@ import be.vlaanderen.omgeving.ld.mcp.core.Tools;
  */
 public final class VocabServer {
 
-    private static final String VERSION = "0.1.0";
+    /**
+     * The version of the jar, from {@code Implementation-Version} in its manifest (set from the
+     * Maven project version when the jar is built); {@code "dev"} when run from the classes, e.g.
+     * in an IDE.
+     */
+    private static final String VERSION = Optional
+            .ofNullable(VocabServer.class.getPackage().getImplementationVersion())
+            .orElse("dev");
 
     private VocabServer() {
     }
