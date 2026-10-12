@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -73,6 +74,27 @@ public final class VocabIndex {
      */
     public int size() {
         return terms.size();
+    }
+
+    /**
+     * Returns the loaded ontologies this index was built from. Callers must not modify it.
+     *
+     * @return the model of the loaded ontologies
+     */
+    public Model model() {
+        return model;
+    }
+
+    /**
+     * Tells whether a term is in the index.
+     *
+     * @param iri the full IRI of the term
+     * @return whether the loaded ontologies declare or describe the term
+     */
+    public boolean contains(String iri) {
+        int i = Collections.binarySearch(terms, ResourceFactory.createResource(iri),
+                Comparator.comparing(Resource::getURI));
+        return i >= 0;
     }
 
     /**

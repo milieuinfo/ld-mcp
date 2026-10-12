@@ -114,4 +114,17 @@ public final class Tools {
         Object value = args == null ? null : args.get(key);
         return value instanceof Number n ? n.intValue() : fallback;
     }
+
+    /**
+     * Reads an optional string argument.
+     *
+     * @param args the tool arguments (may be {@code null})
+     * @param key  the argument name
+     * @return the argument, stripped of surrounding whitespace, or {@code null} if it is missing,
+     *         not a string or blank
+     */
+    public static String optionalString(Map<String, Object> args, String key) {
+        Object value = args == null ? null : args.get(key);
+        return value instanceof String s && !s.isBlank() ? s.strip() : null;
+    }
 }

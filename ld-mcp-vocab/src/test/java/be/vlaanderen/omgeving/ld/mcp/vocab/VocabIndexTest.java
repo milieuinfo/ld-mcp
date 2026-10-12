@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,6 +69,13 @@ class VocabIndexTest {
     void searchRanksExactLabelFirst() {
         String out = index.search("metre", 10);
         assertTrue(out.startsWith("1 hit(s):\n- <http://qudt.org/vocab/unit/M>"), out);
+    }
+
+    @Test
+    void containsKnowsIndexedTerms() {
+        assertTrue(index.contains("http://www.w3.org/ns/sosa/Sample"));
+        assertTrue(index.contains("http://qudt.org/vocab/unit/M"));
+        assertFalse(index.contains("http://spinrdf.org/sp#Sample"));
     }
 
     @Test
