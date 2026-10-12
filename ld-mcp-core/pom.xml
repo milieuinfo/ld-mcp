@@ -9,7 +9,7 @@
   <parent>
     <groupId>be.vlaanderen.omgeving</groupId>
     <artifactId>ld-mcp</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>ld-mcp-core</artifactId>
