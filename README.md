@@ -91,22 +91,40 @@ For every `owl:Class` a NodeShape `<class>Shape` with one PropertyShape per path
 Several restrictions on the same path are merged (largest minimum, smallest maximum).
 Same result as `OwlToShaclGenerator` in OSLOthema-SSNSOSA-VL.
 
+## Download
+
+No need to build anything: every release has the jar attached. You only need **Java 21 or
+later** (e.g. [Eclipse Temurin](https://adoptium.net), the installer for Windows, macOS or Linux;
+check with `java -version`).
+
+Download the latest jar from
+
+<https://github.com/milieuinfo/ld-mcp/releases/latest/download/ld-mcp-vocab.jar>
+
+and put it where the project's `.mcp.json` expects it (see below). For a specific version, pick
+it on the [releases page](https://github.com/milieuinfo/ld-mcp/releases). After downloading a new
+jar, reconnect the server in the client (Claude Code: `/mcp` → `ld-vocab` → Reconnect).
+
 ## Building
 
-Requires Java 21 and Maven.
+For developers. Requires Java 21 and Maven.
 
 ```bash
 mvn package
 # → ld-mcp-vocab/target/ld-mcp-vocab.jar
 ```
 
+**Releasing:** push a tag `v<version>` (e.g. `git tag v0.2.0 && git push origin v0.2.0`). The
+workflow `.github/workflows/release.yml` sets that version, builds and tests, and creates a GitHub
+Release with `ld-mcp-vocab.jar` attached. `.github/workflows/build.yml` builds and tests every
+push to `main` and every pull request.
+
 ## Use in another project
 
-Clone and build ld-mcp next to the project (same parent directory), then add a `.mcp.json` to the
-root of that project. Relative paths are resolved against the directory from which the client is
-started (the project root). The jar path comes from the environment variable `LD_MCP_JAR`, with a
-default that finds the clone next to the project, so that the file works for every user without
-changes:
+Add a `.mcp.json` to the root of that project. Relative paths are resolved against the directory
+from which the client is started (the project root). The jar path comes from the environment
+variable `LD_MCP_JAR`, with a default inside the project, so that a user only has to download the
+jar into `tools/` (listed in the project's `.gitignore`):
 
 ```json
 {
@@ -114,7 +132,7 @@ changes:
     "ld-vocab": {
       "command": "java",
       "args": [
-        "-jar", "${LD_MCP_JAR:-../ld-mcp/ld-mcp-vocab/target/ld-mcp-vocab.jar}",
+        "-jar", "${LD_MCP_JAR:-tools/ld-mcp-vocab.jar}",
         "--ontologies", "src/main/resources",
         "--rules", "path/to/rules.rules",
         "--generate-shapes",
@@ -126,8 +144,8 @@ changes:
 }
 ```
 
-A user whose clone of ld-mcp is elsewhere sets `LD_MCP_JAR` to the full path of
-`ld-mcp-vocab.jar`.
+A developer who builds ld-mcp sets `LD_MCP_JAR` to the full path of
+`ld-mcp-vocab/target/ld-mcp-vocab.jar` instead, and gets every new build without copying it.
 
 Or via the CLI:
 
@@ -143,7 +161,7 @@ repository: the server stays project-neutral. A project adds the kit as a git su
 `oslo-ld-kit/` and passes its rules with `--shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl`, as in
 the example above. Messages from those rules begin with the rule number (`R2: …`). After the kit
 has been updated in the project, the server reloads the rules on the next tool call; in the
-client, `/mcp` → `ld-vocab` → Reconnect is only needed after building a new jar. See the kit's
+client, `/mcp` → `ld-vocab` → Reconnect is only needed after a new jar. See the kit's
 README for how to add and update it, and
 [OSLOthema-SSNSOSA-VL](https://github.com/Informatievlaanderen/OSLOthema-SSNSOSA-VL) for a project that uses
 both.
@@ -154,8 +172,12 @@ both.
 { echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}'
   echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
   echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"lookup_term","arguments":{"term":"sosa:Sample"}}}'
-  sleep 5; } | java -jar ld-mcp-vocab/target/ld-mcp-vocab.jar --ontologies <directory>
+  sleep 20; } | java -jar ld-mcp-vocab/target/ld-mcp-vocab.jar --ontologies <directory>
 ```
+
+The `sleep` keeps stdin open until the answers are written: the server stops when stdin closes,
+and only answers once the ontologies are loaded. With a large set (about 250,000 triples) that
+takes several seconds; if only the `OntologyLoader` log line appears, the wait was too short.
 
 ## Conventions for new servers
 
