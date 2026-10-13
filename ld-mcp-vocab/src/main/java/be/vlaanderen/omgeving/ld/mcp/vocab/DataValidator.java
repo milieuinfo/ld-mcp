@@ -365,16 +365,18 @@ public final class DataValidator {
     }
 
     /**
-     * Collects the class disjointness axioms that OWLMiniReasoner can use: {@code owl:disjointWith}
-     * plus the pairs from {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}. The latter
-     * two use an RDF list (blank nodes) and would otherwise drop out of the subset; OWLMiniReasoner
-     * only understands {@code owl:disjointWith}.
+     * Collects the schema for the disjointness check: {@code owl:disjointWith} plus the pairs from
+     * {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf} (which use an RDF list and would
+     * otherwise drop out of the subset; OWLMiniReasoner only understands {@code owl:disjointWith}),
+     * and the class hierarchy ({@code rdfs:subClassOf} between named classes), so that an instance
+     * of a subclass meets the disjointness of its superclass also without {@code --rules}.
      *
      * @param source the ontologies
-     * @return a model with only {@code owl:disjointWith} triples between named classes
+     * @return a model with {@code owl:disjointWith} and {@code rdfs:subClassOf} triples between named
+     *         classes
      */
     static Model disjointness(Model source) {
-        Model subset = subset(source, OWL.disjointWith);
+        Model subset = subset(source, OWL.disjointWith, RDFS.subClassOf);
         source.listSubjectsWithProperty(RDF.type, OWL2.AllDisjointClasses).forEachRemaining(axiom ->
                 addPairs(subset, axiom.getPropertyResourceValue(OWL2.members)));
         source.listStatements(null, OWL2.disjointUnionOf, (RDFNode) null).forEachRemaining(st ->

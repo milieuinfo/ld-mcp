@@ -360,5 +360,16 @@ class DataValidatorTest {
         String out = TextReport.render(new ValidationResult(new ValidationResult.Header("f", 1, null, null), List.of(step)));
         assertTrue(out.contains("[DISJOINTNESS] 0 violation(s), 1 warning(s)\n- [warning] odd"), out);
     }
+
+    @Test
+    void disjointnessFollowsTheClassHierarchyWithoutRules() throws IOException {
+        // sosa:Observation is a subclass of prov:Activity, which is disjoint with prov:Entity.
+        String out = validator(false).validate(data("""
+                @prefix prov: <http://www.w3.org/ns/prov#> .
+                ex:o a sosa:Observation , prov:Entity .
+                """));
+        assertTrue(out.contains("[INFERENCE] skipped"), out);
+        assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)"), out);
+    }
 }
 

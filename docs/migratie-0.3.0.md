@@ -44,3 +44,13 @@ hint noemt):
 **Golden-diff (24 bestanden):** enkel de markers. Eén inhoudelijke verandering:
 `EnergieManagementSystem/bash/prefixen.ttl` (0 triples) gaf `[SHACL] conforms` en geeft nu
 `[SHACL] no shape applies to this data` — eerlijker, geen fout in het voorbeeld.
+
+## 3.2 Disjointness volgt de klassehiërarchie
+
+De reasoner krijgt naast de disjunctie-axioma's ook `rdfs:subClassOf` tussen benoemde klassen. Een
+instantie van een subklasse botst nu ook zonder `--rules` met de disjunctie van haar superklasse
+(`ex:o a sosa:Observation, prov:Entity` geeft een violation, want `sosa:Observation ⊑
+prov:Activity`, disjunct met `prov:Entity`).
+
+**Golden-diff:** geen. OSLOthema-SSNSOSA-VL gebruikt `--rules` met een subklasse-regel, dus die
+afleiding gebeurde al. Tijd: r-factor (2.939 triples) 0,8 → 1,2 s.
