@@ -10,4 +10,4 @@ Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldStilleggingProdu
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (32 of 439 shapes applied to 27 focus node(s); graph: asserted data)
+[SHACL] conforms (41 of 439 shapes applied to 27 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

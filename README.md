@@ -102,7 +102,15 @@ reproduced. Then it reports each step on its own line:
 | `[VOCAB] ok` / `[VOCAB] n error(s), m suspect, k hint(s)` | Every predicate, every `rdf:type` object and every other IRI in a vocabulary namespace occurs in the ontologies / the findings, each marked `[error]`, `[suspect]` or `[hint]` (see below), errors first, with suggestions |
 | `[INFERENCE]` | Number of triples inferred by the rules, or `skipped` |
 | `[DISJOINTNESS] ok` / `[DISJOINTNESS] n violation(s)` | Class disjointness (`owl:disjointWith`, `owl:AllDisjointClasses`, `owl:disjointUnionOf`) after inference, following the class hierarchy of the ontologies (also without `--rules`). Only disjointness: not functional properties, `owl:differentFrom`, `owl:complementOf` or datatypes, so not full OWL consistency |
-| `[SHACL] conforms (a of n shapes applied to k focus node(s); graph: …)` / `[SHACL] no shape applies to this data` / `[SHACL] n violation(s), m warning(s) (…)` | SHACL result, or `skipped`. The part in brackets says how much of the shapes met the data: a `conforms` with few shapes applied proves little. Results are grouped by `sh:severity`: violations first, then warnings and info, marked `[warning]`/`[info]`. Note that `sh:severity` belongs on the shape, not on an `sh:sparql` constraint |
+| `[SHACL] conforms (a of n shapes applied to k focus node(s); graph: …)` / `[SHACL] no shape applies to this data` / `[SHACL] n violation(s), m warning(s) (…)` | SHACL result, or `skipped`, on the data plus the class hierarchy of the ontologies plus the types the ontologies give to terms the data only refers to (see *SHACL graph*). The part in brackets says how much of the shapes met the data: a `conforms` with few shapes applied proves little. Results are grouped by `sh:severity`: violations first, then warnings and info, marked `[warning]`/`[info]`. Note that `sh:severity` belongs on the shape, not on an `sh:sparql` constraint |
+
+**SHACL graph.** The shapes see the data, plus `rdfs:subClassOf` between named classes of the
+ontologies (so `sh:class` and `sh:targetClass` follow subclasses: an OSLO specialisation is valid
+where its superclass is expected, and a shape on a superclass reaches instances of subclasses), plus
+the `rdf:type` that the ontologies assert for IRIs the data refers to without describing them (so
+`sh:class qudt:Unit` accepts `unit:M`). Those terms are not validated themselves, unless a shape
+targets them otherwise (e.g. `sh:targetObjectsOf`). Triples inferred by `--rules` are not included:
+an inferred type must not fill in a property that `sh:minCount` requires.
 
 How sure a `[VOCAB]` finding is:
 

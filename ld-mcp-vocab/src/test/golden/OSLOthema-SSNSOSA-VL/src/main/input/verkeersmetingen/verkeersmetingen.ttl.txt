@@ -6,4 +6,4 @@ Validation: src/main/input/verkeersmetingen/verkeersmetingen.ttl (547 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (27 of 439 shapes applied to 133 focus node(s); graph: asserted data)
+[SHACL] conforms (36 of 439 shapes applied to 133 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

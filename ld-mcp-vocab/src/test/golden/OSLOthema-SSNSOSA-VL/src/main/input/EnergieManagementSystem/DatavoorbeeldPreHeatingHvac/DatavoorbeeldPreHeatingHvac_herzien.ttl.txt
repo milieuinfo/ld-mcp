@@ -6,5 +6,5 @@ Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldPreHeatingHvac/D
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (36 of 439 shapes applied to 43 focus node(s); graph: asserted data)
+[SHACL] 0 violation(s), 1 warning(s) (44 of 439 shapes applied to 43 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] exec:bezettingsvoorspelling_001  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

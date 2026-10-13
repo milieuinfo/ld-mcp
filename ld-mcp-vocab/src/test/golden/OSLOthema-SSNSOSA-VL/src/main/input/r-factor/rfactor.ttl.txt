@@ -6,55 +6,6 @@ Validation: src/main/input/r-factor/rfactor.ttl (2939 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 160 violation(s) (27 of 439 shapes applied to 763 focus node(s); graph: asserted data)
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p01>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p02>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p03>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p04>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p05>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p06>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p07>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p08>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p09>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p10>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p11>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p12>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p13>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p14>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p15>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p16>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p17>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p18>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p19>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p20>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p21>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p22>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p23>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p24>
-- ex:collectie-KMI-6408-2002-15daags  path: sosa:usedProcedure  — ClassConstraint[<http://www.w3.org/ns/sosa/Procedure>]: Expected class :<http://www.w3.org/ns/sosa/Procedure> for <https://example.org/rfactor/procedure-rfactor>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m01>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m02>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m03>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m04>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m05>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m06>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m07>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m08>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m09>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m10>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m11>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-m12>
-- ex:collectie-KMI-6408-2002-maandelijks  path: sosa:usedProcedure  — ClassConstraint[<http://www.w3.org/ns/sosa/Procedure>]: Expected class :<http://www.w3.org/ns/sosa/Procedure> for <https://example.org/rfactor/procedure-rfactor>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p01>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p02>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p03>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p04>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p05>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p06>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p07>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p08>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p09>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p10>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p11>
-- ex:collectie-KMI-6408-2003-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2003-p12>
-… and 110 more messages
+[SHACL] 2 violation(s) (41 of 439 shapes applied to 763 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+- ex:unit-rfactor  path: qudt:hasDimensionVector  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- ex:unit-rfactor  path: qudt:hasQuantityKind  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0

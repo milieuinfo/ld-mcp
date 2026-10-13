@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.compose.Union;
 import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -34,7 +35,9 @@ import org.apache.jena.shacl.ShaclValidator;
 import org.apache.jena.shacl.Shapes;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.shacl.parser.Shape;
+import org.apache.jena.shacl.validation.ReportEntry;
 import org.apache.jena.shacl.validation.VLib;
+import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.shacl.validation.Severity;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.vocabulary.OWL;
@@ -62,8 +65,8 @@ import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Step;
  *   <li>OWL consistency with OWLMiniReasoner and the {@code owl:disjointWith} subset
  *       (including {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}, expanded into
  *       pairs), on the model after inference;</li>
- *   <li>SHACL (optional, {@code --shapes} and/or {@code --generate-shapes}) on the original
- *       model.</li>
+ *   <li>SHACL (optional, {@code --shapes} and/or {@code --generate-shapes}) on the data plus the
+ *       class hierarchy and the types of referenced terms, without inferred triples.</li>
  * </ol>
  * The report marks each step with {@code [VOCAB]}/{@code [VOCAB ERROR]}, {@code [INFERENCE]},
  * {@code [OWL]}/{@code [MODEL INVALID]} and {@code [SHACL]}.
@@ -75,13 +78,14 @@ public final class DataValidator {
     private final Set<String> vocabularyNamespaces;
     private final Model structural;
     private final Reasoner owlReasoner;
+    private final Graph hierarchy;
     private final List<Rule> rules;
     private final Shapes shapes;
     private final PrefixRegistry registry;
     private ValidationResult.Configuration configuration;
 
     /** What the SHACL step validates, as the report says it. */
-    static final String SHACL_GRAPH = "asserted data";
+    static final String SHACL_GRAPH = "asserted data + class hierarchy + types of referenced terms";
 
     /**
      * Prepares the subsets, reasoners and shapes from files; these are reused for every validation.
@@ -126,6 +130,8 @@ public final class DataValidator {
                 RDFS.subClassOf, RDFS.subPropertyOf, OWL.inverseOf, RDFS.domain, RDFS.range);
         this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()
                 .bindSchema(disjointness(ontology));
+        // Direct subClassOf triples suffice: SHACL follows rdfs:subClassOf* in the data graph itself.
+        this.hierarchy = subset(ontology, RDFS.subClassOf).getGraph();
         this.rules = rules;
         this.shapes = shapes;
         this.registry = registry;
@@ -282,14 +288,29 @@ public final class DataValidator {
         if (shapes == null) {
             return new Step(Kind.SHACL, Status.SKIPPED, List.of(), Map.of());
         }
-        Graph graph = data.getGraph();
+        // The data plus the class hierarchy of the ontologies, read-only and without copying: so that
+        // sh:class and sh:targetClass follow subclasses. No inferred triples (D2): an inferred type
+        // must not fill in a property that sh:minCount requires.
+        Graph base = new Union(data.getGraph(), hierarchy);
+        // Plus the types the ontologies assert for terms the data only refers to (a unit, a concept):
+        // so that sh:class accepts unit:M as a qudt:Unit without the data repeating its type.
+        Graph referenced = referencedTypes(data);
+        Graph graph = referenced.isEmpty() ? base : new Union(base, referenced);
         ValidationReport report = ShaclValidator.get().validate(shapes, graph);
-        Map<String, Object> stats = shaclStats(graph);
-        if (report.conforms()) {
+        Map<String, Object> stats = shaclStats(base);
+        // Those terms must not become subjects of validation themselves: drop results on them, unless
+        // they are focus nodes without the added types too (e.g. through sh:targetObjectsOf).
+        Set<Node> introduced = new HashSet<>();
+        referenced.find().forEachRemaining(t -> introduced.add(t.getSubject()));
+        Set<Node> keep = focusNodes(base, introduced);
+        List<ReportEntry> entries = report.getEntries().stream()
+                .filter(e -> !introduced.contains(e.focusNode()) || keep.contains(e.focusNode()))
+                .toList();
+        if (entries.isEmpty()) {
             return new Step(Kind.SHACL, Status.OK, List.of(), stats);
         }
         List<Finding> findings = new ArrayList<>();
-        report.getEntries().forEach(e -> {
+        entries.forEach(e -> {
             String severity = severityName(e.severity());
             Certainty certainty = e.severity() == Severity.Violation ? Certainty.ERROR
                     : e.severity() == Severity.Warning ? Certainty.SUSPECT : Certainty.HINT;
@@ -299,6 +320,41 @@ public final class DataValidator {
         });
         findings.sort(Comparator.comparing(TextReport::shaclLine));
         return new Step(Kind.SHACL, Status.FINDINGS, findings, stats);
+    }
+
+    /**
+     * The {@code rdf:type} triples that the ontologies assert for IRIs that the data uses as an object
+     * (not of {@code rdf:type}) without describing them itself.
+     */
+    private Graph referencedTypes(Model data) {
+        Graph out = GraphFactory.createDefaultGraph();
+        Graph dataGraph = data.getGraph();
+        Graph onto = ontology.getGraph();
+        Set<Node> seen = new HashSet<>();
+        dataGraph.find().forEachRemaining(t -> {
+            Node o = t.getObject();
+            if (o.isURI() && !t.getPredicate().equals(RDF.type.asNode()) && seen.add(o)
+                    && !dataGraph.contains(o, Node.ANY, Node.ANY)) {
+                onto.find(o, RDF.type.asNode(), Node.ANY).forEachRemaining(out::add);
+            }
+        });
+        return out;
+    }
+
+    /** Which of the given nodes are focus nodes of some shape in the graph. */
+    private Set<Node> focusNodes(Graph graph, Set<Node> candidates) {
+        Set<Node> out = new HashSet<>();
+        if (candidates.isEmpty()) {
+            return out;
+        }
+        for (Shape shape : shapes.getTargetShapes()) {
+            for (Node n : candidates) {
+                if (!out.contains(n) && VLib.isFocusNode(shape, n, graph)) {
+                    out.add(n);
+                }
+            }
+        }
+        return out;
     }
 
     /**

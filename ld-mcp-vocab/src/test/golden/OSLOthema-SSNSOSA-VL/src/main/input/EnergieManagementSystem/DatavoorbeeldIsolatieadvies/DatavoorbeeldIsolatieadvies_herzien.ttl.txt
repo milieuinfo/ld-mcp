@@ -8,5 +8,5 @@ Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldIsolatieadvies/D
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (27 of 439 shapes applied to 24 focus node(s); graph: asserted data)
+[SHACL] 0 violation(s), 1 warning(s) (39 of 439 shapes applied to 24 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] exec:meting-001  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

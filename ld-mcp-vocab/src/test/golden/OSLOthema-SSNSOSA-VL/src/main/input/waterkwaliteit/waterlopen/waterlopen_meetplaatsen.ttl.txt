@@ -6,4 +6,55 @@ Validation: src/main/input/waterkwaliteit/waterlopen/waterlopen_meetplaatsen.ttl
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (4 of 439 shapes applied to 182 focus node(s); graph: asserted data)
+[SHACL] 91 violation(s) (10 of 439 shapes applied to 182 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+- waterloop:1  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:12  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:1201  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:13  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:15  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:2  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:20  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:2121  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:2123  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:2801  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:3123  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:32  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:34  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:4  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:4201  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:4203  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:4626  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:5  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:5004  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:5188  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:5951  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:5956  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:625  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:6551  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:6552  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:6619  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:683  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:7  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:7151  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:7152  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:7154  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:8501  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:8502  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:9  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:9502  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:9512  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:9744  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/101021  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/101086  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/102751  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/103355  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/13919  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/28007  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/3184  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/43677  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/43680  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/44596  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/46752  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/48329  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+- waterloop:waterloopsegment/54694  path: <http://www.w3.org/ns/sosa/isFeatureOfInterestOf>  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
+… and 41 more messages

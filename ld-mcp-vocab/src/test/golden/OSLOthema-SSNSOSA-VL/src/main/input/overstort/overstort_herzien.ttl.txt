@@ -6,5 +6,5 @@ Validation: src/main/input/overstort/overstort_herzien.ttl (64 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (17 of 439 shapes applied to 12 focus node(s); graph: asserted data)
+[SHACL] 0 violation(s), 1 warning(s) (24 of 439 shapes applied to 12 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] event:4004f4ea-117d-4e01-9b7d-6b6af865ad52  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

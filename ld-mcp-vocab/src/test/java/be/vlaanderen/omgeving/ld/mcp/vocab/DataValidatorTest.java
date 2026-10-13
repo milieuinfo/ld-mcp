@@ -238,7 +238,7 @@ class DataValidatorTest {
         DataValidator validator = new DataValidator(ontology, new VocabIndex(ontology), null, shapes, false, null);
         String out = validator.validate(data("ex:a a sosa:Observation ."));
         assertTrue(out.contains("[SHACL] 0 violation(s), 1 warning(s) (1 of 1 shapes applied to 1 focus node(s); "
-                + "graph: asserted data)"), out);
+                + "graph: asserted data + class hierarchy + types of referenced terms)"), out);
         assertTrue(out.contains("- [warning] ex:a  path: sosa:madeBySensor  — R2: madeBySensor aanbevolen"), out);
     }
 
@@ -337,9 +337,9 @@ class DataValidatorTest {
                 [] a sh:NodeShape ; sh:targetClass sosa:Sample ; sh:property [ sh:path sosa:isSampleOf ; sh:minCount 1 ] .
                 """);
         String none = v.validate(data("ex:a a voc:A ."));
-        assertTrue(none.contains("[SHACL] no shape applies to this data (2 shapes loaded; graph: asserted data)"), none);
+        assertTrue(none.contains("[SHACL] no shape applies to this data (2 shapes loaded; graph: asserted data + class hierarchy + types of referenced terms)"), none);
         String some = v.validate(data("ex:a a sosa:Observation ; sosa:madeBySensor ex:s ."));
-        assertTrue(some.contains("[SHACL] conforms (1 of 2 shapes applied to 1 focus node(s); graph: asserted data)"), some);
+        assertTrue(some.contains("[SHACL] conforms (1 of 2 shapes applied to 1 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)"), some);
     }
 
     @Test
@@ -370,6 +370,80 @@ class DataValidatorTest {
                 """));
         assertTrue(out.contains("[INFERENCE] skipped"), out);
         assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)"), out);
+    }
+
+    private static final String HIERARCHY = """
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+            @prefix voc:  <https://example.org/voc/> .
+            voc:Part a owl:Class . voc:SubPart a owl:Class ; rdfs:subClassOf voc:Part .
+            voc:Thing a owl:Class . voc:Special a owl:Class ; rdfs:subClassOf voc:Thing .
+            voc:part a owl:ObjectProperty .
+            """;
+
+    private static final String PART_SHAPE = """
+            @prefix sh:  <http://www.w3.org/ns/shacl#> .
+            @prefix voc: <https://example.org/voc/> .
+            [] a sh:NodeShape ; sh:targetClass voc:Thing ;
+               sh:property [ sh:path voc:part ; sh:minCount 1 ; sh:class voc:Part ] .
+            """;
+
+    private DataValidator hierarchyValidator() throws IOException {
+        Model ontology = ModelFactory.createDefaultModel();
+        ontology.read(new StringReader(HIERARCHY), null, "TTL");
+        Path shapes = Files.writeString(dir.resolve("shapes.ttl"), PART_SHAPE);
+        return new DataValidator(ontology, new VocabIndex(ontology), null, shapes, false, null);
+    }
+
+    @Test
+    void shaclClassAcceptsAnInstanceOfASubclass() throws IOException {
+        String out = hierarchyValidator().validate(data("ex:t a voc:Thing ; voc:part ex:p . ex:p a voc:SubPart ."));
+        assertTrue(out.contains("[SHACL] conforms"), out);
+        assertTrue(out.contains("graph: asserted data + class hierarchy + types of referenced terms"), out);
+    }
+
+    @Test
+    void aShapeOnASuperclassTargetsInstancesOfASubclass() throws IOException {
+        String out = hierarchyValidator().validate(data("ex:s a voc:Special ."));
+        assertTrue(out.contains("[SHACL] 1 violation(s)"), out);
+        assertTrue(out.contains("- ex:s  path: ") && out.contains("minCount[1]"), out);
+    }
+
+    @Test
+    void theHierarchyItselfIsNotValidated() throws IOException {
+        // The ontology's classes are no focus nodes: only rdfs:subClassOf is added, no rdf:type.
+        String out = hierarchyValidator().validate(data("ex:t a voc:Thing ; voc:part ex:p . ex:p a voc:Part ."));
+        assertTrue(out.contains("[SHACL] conforms (1 of 1 shapes applied to 1 focus node(s)"), out);
+    }
+
+    @Test
+    void aReferencedTermCountsWithTheTypeTheOntologyGivesIt() throws IOException {
+        // unit:M a qudt:Unit is in the ontology, not in the data.
+        DataValidator v = withShapes("""
+                @prefix sh:   <http://www.w3.org/ns/shacl#> .
+                @prefix qudt: <http://qudt.org/schema/qudt/> .
+                @prefix sosa: <http://www.w3.org/ns/sosa/> .
+                [] a sh:NodeShape ; sh:targetClass sosa:Observation ;
+                   sh:property [ sh:path qudt:hasUnit ; sh:class qudt:Unit ] .
+                [] a sh:NodeShape ; sh:targetClass qudt:Unit ;
+                   sh:property [ sh:path qudt:hasQuantityKind ; sh:minCount 1 ] .
+                """);
+        String out = v.validate(data("ex:o a sosa:Observation ; qudt:hasUnit unit:M ."));
+        assertTrue(out.contains("[SHACL] conforms (1 of 2 shapes applied to 1 focus node(s)"), out);
+        String wrong = v.validate(data("ex:o a sosa:Observation ; qudt:hasUnit ex:notAUnit ."));
+        assertTrue(wrong.contains("[SHACL] 1 violation(s)"), wrong);
+    }
+
+    @Test
+    void aReferencedTermIsStillCheckedWhenAShapeTargetsItAsObject() throws IOException {
+        DataValidator v = withShapes("""
+                @prefix sh:   <http://www.w3.org/ns/shacl#> .
+                @prefix qudt: <http://qudt.org/schema/qudt/> .
+                [] a sh:NodeShape ; sh:targetObjectsOf qudt:hasUnit ;
+                   sh:property [ sh:path qudt:hasQuantityKind ; sh:minCount 1 ] .
+                """);
+        String out = v.validate(data("ex:o qudt:hasUnit unit:M ."));
+        assertTrue(out.contains("[SHACL] 1 violation(s)") && out.contains("unit:M  path: qudt:hasQuantityKind"), out);
     }
 }
 

@@ -6,7 +6,7 @@ Validation: src/main/input/geluidsmeetnet/alternatief/geluidsmeetnet_emissie.ttl
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s) (28 of 439 shapes applied to 81 focus node(s); graph: asserted data)
+[SHACL] 0 violation(s), 4 warning(s) (34 of 439 shapes applied to 81 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:meetpost-F041  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
 - [warning] ex:meetpost-F045  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
 - [warning] ex:meetpost-M071  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).

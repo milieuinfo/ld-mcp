@@ -89,7 +89,8 @@ final class VocabTools {
                                 + "suggestions (http/https and '#'/'/' near misses). INFERENCE: the --rules, if any. "
                                 + "DISJOINTNESS: class disjointness only (owl:disjointWith, AllDisjointClasses, "
                                 + "disjointUnionOf), not full OWL consistency. SHACL: the shapes on the asserted "
-                                + "data, with how many shapes applied. Modified ontologies, rules or shapes are "
+                                + "data plus the class hierarchy and the types of referenced terms (no inferred "
+                                + "triples), with how many shapes applied. Modified ontologies, rules or shapes are "
                                 + "reloaded automatically.",
                         Tools.objectSchema(
                                 Map.of("path", Tools.string(

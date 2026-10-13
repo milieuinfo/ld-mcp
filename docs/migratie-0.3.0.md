@@ -54,3 +54,35 @@ prov:Activity`, disjunct met `prov:Entity`).
 
 **Golden-diff:** geen. OSLOthema-SSNSOSA-VL gebruikt `--rules` met een subklasse-regel, dus die
 afleiding gebeurde al. Tijd: r-factor (2.939 triples) 0,8 → 1,2 s.
+
+## 3.3 SHACL ziet de klassehiërarchie
+
+**Graaf van de SHACL-stap:** de data, plus `rdfs:subClassOf` tussen benoemde klassen uit de
+ontologieën (directe triples volstaan: SHACL volgt `rdfs:subClassOf*` zelf), plus de `rdf:type` die
+de ontologieën geven aan termen waar de data enkel naar verwijst (een eenheid, een concept). Geen
+afgeleide triples uit `--rules` (D2). De rapportregel zegt het:
+`graph: asserted data + class hierarchy + types of referenced terms`.
+
+**Bijsturing van D2.** Met enkel data + hiërarchie gaf de golden suite 17 nieuwe, valse violations:
+`sh:class qudt:Unit` op `unit:DEG_C`, `unit:L`, … De shape kwam via een superklasse nu bij de
+resultaatknopen, en de eenheid draagt haar type in QUDT, niet in de data. Vandaar de types van
+verwezen termen. Die termen worden zelf geen onderwerp van validatie: resultaten op zo'n knoop vallen
+weg, tenzij hij ook zonder de toegevoegde types een focusnode is (bv. via `sh:targetObjectsOf` in de
+kit). Zo blijft "een afgeleid type vult geen `sh:minCount` in" overeind: de toegevoegde triples zijn
+geasserteerd, en enkel over knopen die de data niet zelf beschrijft.
+
+**Golden-diff:**
+- `r-factor/rfactor.ttl`: 160 → 2 violations. Weg: 158 valse meldingen (`sh:or` op `sosa:hasMember`
+  en `sh:class sosa:Procedure` voor instanties van subklassen). Nieuw: `ex:unit-rfactor`
+  (`a qudt:Unit`, zelf gemunt) mist `qudt:hasQuantityKind` en `qudt:hasDimensionVector`, die de uit
+  QUDT gegenereerde shape van een superklasse eist. Echt in de profiellezing (D3).
+- `waterkwaliteit/waterlopen/waterlopen_meetplaatsen.ttl`: conforms → 91 violations
+  `sosa:isFeatureOfInterestOf` minCount 1. Oorzaak: `code:Vhag ⊑ code:VhaWaterloopobject ⊑ … ⊑
+  sosa:FeatureOfInterest` in de eigen ontologie, en SSN/SOSA 2023 zegt dat elk feature of interest
+  `isFeatureOfInterestOf some (Deployment ⊔ Execution ⊔ ExecutionCollection)`. Een rechtstreekse
+  `sosa:FeatureOfInterest` kreeg die melding al. **Beslissing voor het project:** moet een
+  referentielijst van waterlopen die restrictie halen? Zo niet: de `minCardinality 0`-conventie op
+  de eigen klasse, of de waterlopen niet als feature of interest typeren.
+- Kit: de alinea "SHACL validates the non-inferred graph … type the superclasses explicitly" klopt
+  niet meer. Voortaan: de klassehiërarchie en de types van verwezen termen tellen mee; afgeleide
+  types (domain/range uit `--rules`) niet.
