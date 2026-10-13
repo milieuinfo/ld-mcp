@@ -24,6 +24,7 @@ import be.vlaanderen.omgeving.ld.mcp.core.Tools;
  *     [--lov-url https://lov.linkeddata.es/dataset/api/v2] [--core-namespace http://…/] [--offline]
  *     [--alignments registers/alignments.ttl]
  *     [--allow-private-hosts] [--max-response-bytes 20971520] [--network-budget 30]
+ *     [--data-root .]
  * </pre>
  *
  * The tools {@code lov_search} and {@code vocabulary_profile} use the network (LOV and the
@@ -56,7 +57,8 @@ public final class VocabServer {
             Map.entry("alignments", ServerArgs.Kind.SINGLE),
             Map.entry("allow-private-hosts", ServerArgs.Kind.FLAG),
             Map.entry("max-response-bytes", ServerArgs.Kind.SINGLE),
-            Map.entry("network-budget", ServerArgs.Kind.SINGLE));
+            Map.entry("network-budget", ServerArgs.Kind.SINGLE),
+            Map.entry("data-root", ServerArgs.Kind.SINGLE));
 
     private VocabServer() {
     }
@@ -122,6 +124,7 @@ public final class VocabServer {
         VocabularyProfiler profiler = new VocabularyProfiler(lov, fetcher, core, budget);
         Duration searchBudget = budget.dividedBy(2);
         Path alignments = parsed.first("alignments").map(Path::of).orElse(null);
+        DataRoot dataRoot = new DataRoot(Path.of(parsed.first("data-root").orElse("")));
 
         return new Setup(
                 "Looks up classes and properties in the loaded ontologies ("
@@ -166,12 +169,14 @@ public final class VocabServer {
                                         + "shapes are reloaded automatically.",
                                 Tools.objectSchema(
                                         Map.of("path", Tools.string(
-                                                "Path to the file, relative to the project root")),
+                                                "Path to the file, relative to the project root (--data-root); "
+                                                        + "files outside it are refused")),
                                         List.of("path")),
                                 Tools.readOnly(false),
                                 a -> {
                                     Workspace.State state = workspace.current();
-                                    return state.withProblems(state.validator().validate(Tools.requiredString(a, "path")));
+                                    String given = Tools.requiredString(a, "path");
+                                    return state.withProblems(state.validator().validate(dataRoot.resolve(given), given));
                                 }),
                         Tools.textTool("lov_search",
                                 "Searches Linked Open Vocabularies (LOV) for candidate terms and marks "

@@ -49,7 +49,7 @@ class ProtocolTest {
         Path onto = dir.resolve("onto");
         Files.createDirectories(onto);
         Files.writeString(onto.resolve("voc.ttl"), ONTOLOGY);
-        List<String> args = new ArrayList<>(List.of("--ontologies", onto.toString()));
+        List<String> args = new ArrayList<>(List.of("--ontologies", onto.toString(), "--data-root", dir.toString()));
         args.addAll(Arrays.asList(extra));
         VocabServer.Setup setup = VocabServer.setup(args.toArray(String[]::new));
         harness = new McpHarness(setup.instructions(), setup.tools());
@@ -254,4 +254,23 @@ class ProtocolTest {
         report = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString()))).text();
         assertTrue(report.contains("[SHACL] 1 violation(s)") && report.contains("maxCount[0]"), report);
     }
+
+    @Test
+    void validateFileStaysInsideTheDataRoot(@TempDir Path outside) throws IOException {
+        start();
+        Path secret = Files.writeString(outside.resolve("secret.ttl"), "<urn:a> <urn:b> \"secret\" .");
+        Files.createSymbolicLink(dir.resolve("link.ttl"), secret);
+        Files.writeString(dir.resolve("inside.ttl"), "<urn:a> a <https://example.org/voc/Thing> .");
+        for (String path : List.of(secret.toString(), "../" + outside.getFileName() + "/secret.ttl", "link.ttl")) {
+            McpHarness.ToolResult r = harness.callTool("validate_file", McpHarness.args(Map.of("path", path)));
+            assertTrue(r.isError() && r.text().startsWith("Refused: " + path + " lies outside the data root"),
+                    path + ": " + r.text());
+        }
+        McpHarness.ToolResult ok = harness.callTool("validate_file", McpHarness.args(Map.of("path", "inside.ttl")));
+        assertFalse(ok.isError(), ok.text());
+        assertTrue(ok.text().startsWith("Validation: inside.ttl (1 triples)"), ok.text());
+        McpHarness.ToolResult missing = harness.callTool("validate_file", McpHarness.args(Map.of("path", "nope.ttl")));
+        assertTrue(missing.isError() && missing.text().startsWith("File not found: "), missing.text());
+    }
 }
+

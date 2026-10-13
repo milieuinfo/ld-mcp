@@ -141,7 +141,19 @@ public final class DataValidator {
      * @throws IllegalArgumentException if the file does not exist
      */
     public String validate(String file) {
-        Path path = Path.of(file);
+        return validate(Path.of(file), file);
+    }
+
+    /**
+     * Validates one data file.
+     *
+     * @param path  the file; the format is derived from the extension
+     * @param label how the report names the file
+     * @return the report, or a message starting with {@code PARSE ERROR} if the file cannot be parsed
+     * @throws IllegalArgumentException if the file does not exist
+     */
+    public String validate(Path path, String label) {
+        String file = label;
         if (!Files.isRegularFile(path)) {
             throw new IllegalArgumentException("File not found: " + path.toAbsolutePath());
         }

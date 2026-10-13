@@ -113,6 +113,10 @@ class GoldenSuiteTest {
                 args.set(i + 1, root.resolve(args.get(i + 1)).toString());
             }
         }
+        if (!args.contains("--data-root")) {
+            args.add("--data-root");
+            args.add(root.toString());
+        }
         return args.toArray(String[]::new);
     }
 }
