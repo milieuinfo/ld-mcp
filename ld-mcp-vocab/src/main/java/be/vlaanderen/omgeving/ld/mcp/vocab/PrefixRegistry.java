@@ -8,9 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.jena.atlas.RuntimeIOException;
-import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.system.StreamRDFBase;
+
+import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
 
 /**
  * A registry of well-known namespaces, read from the prefix declarations of an RDF file, such as
@@ -39,7 +40,7 @@ public final class PrefixRegistry {
         }
         PrefixRegistry registry = new PrefixRegistry();
         try {
-            RDFParser.source(file).parse(new StreamRDFBase() {
+            JsonLd.parser(file).parse(new StreamRDFBase() {
                 @Override
                 public void prefix(String prefix, String iri) {
                     List<String> names = registry.prefixes.computeIfAbsent(iri, k -> new ArrayList<>());

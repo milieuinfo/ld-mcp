@@ -116,4 +116,50 @@ class ProtocolTest {
             assertTrue(r.text().contains("200, text/turtle, 1 triples"), r.text());
         }
     }
+
+    private static final String REMOTE_CONTEXT_DATA = """
+            {"@context": "%s/ctx.jsonld",
+             "@id": "https://example.org/d/1", "@type": "https://example.org/voc/Thing"}
+            """;
+
+    @Test
+    void validateFileDoesNotFetchARemoteJsonLdContext() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/ctx.jsonld", 200, "application/ld+json", "{\"@context\": {}}");
+            start("--allow-private-hosts");
+            Path data = dir.resolve("data.jsonld");
+            Files.writeString(data, REMOTE_CONTEXT_DATA.formatted(http.base()));
+            McpHarness.ToolResult r = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString())));
+            assertTrue(r.text().startsWith("PARSE ERROR") && r.text().contains("remote @context not allowed"), r.text());
+            assertEquals(0, http.requests());
+        }
+    }
+
+    @Test
+    void offlineMakesNoRequestsAtAll() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/ctx.jsonld", 200, "application/ld+json", "{\"@context\": {}}");
+            http.body("/voc", 200, "text/turtle", "<urn:a> <urn:b> <urn:c> .");
+            start("--offline", "--lov-url", http.base() + "/lov", "--allow-private-hosts");
+            Path data = dir.resolve("data.jsonld");
+            Files.writeString(data, REMOTE_CONTEXT_DATA.formatted(http.base()));
+            harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString())));
+            assertTrue(harness.callTool("vocabulary_profile",
+                    McpHarness.args(Map.of("vocabulary", http.base() + "/voc"))).isError());
+            assertTrue(harness.callTool("lov_search", McpHarness.args(Map.of("query", "x"))).isError());
+            assertEquals(0, http.requests());
+        }
+    }
+
+    @Test
+    void jsonLdWithAnInlineContextStillValidates() throws IOException {
+        start();
+        Path data = dir.resolve("data.jsonld");
+        Files.writeString(data, """
+                {"@context": {"ex": "https://example.org/voc/"},
+                 "@id": "https://example.org/d/1", "@type": "ex:Thing", "ex:name": "x"}
+                """);
+        McpHarness.ToolResult r = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString())));
+        assertTrue(r.text().contains("(2 triples)") && r.text().contains("[VOCAB] ok"), r.text());
+    }
 }

@@ -58,4 +58,26 @@ class OntologyLoaderTest {
     void aMissingPathIsIgnored() {
         assertEquals(List.of(), OntologyLoader.files(List.of(dir.resolve("nope"))));
     }
+
+    @Test
+    void aJsonLdOntologyWithARemoteContextIsSkippedWithoutARequest() throws IOException {
+        java.util.concurrent.atomic.AtomicInteger requests = new java.util.concurrent.atomic.AtomicInteger();
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+                new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/", ex -> {
+            requests.incrementAndGet();
+            ex.sendResponseHeaders(404, -1);
+            ex.close();
+        });
+        server.start();
+        try {
+            Files.writeString(dir.resolve("a.jsonld"), "{\"@context\": \"http://127.0.0.1:"
+                    + server.getAddress().getPort() + "/c\", \"@id\": \"urn:a\", \"urn:p\": \"x\"}");
+            Files.writeString(dir.resolve("b.ttl"), "<urn:b> <urn:p> <urn:o> .");
+            assertEquals(1, OntologyLoader.load(List.of(dir)).size());
+            assertEquals(0, requests.get());
+        } finally {
+            server.stop(0);
+        }
+    }
 }

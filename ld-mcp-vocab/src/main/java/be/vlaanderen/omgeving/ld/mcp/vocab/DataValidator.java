@@ -28,7 +28,6 @@ import org.apache.jena.reasoner.ReasonerRegistry;
 import org.apache.jena.reasoner.ValidityReport;
 import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.shacl.ShaclValidator;
 import org.apache.jena.shacl.Shapes;
@@ -39,6 +38,8 @@ import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+
+import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
 
 /**
  * Validates an RDF data file against the loaded ontologies, in four steps:
@@ -115,7 +116,7 @@ public final class DataValidator {
         }
         Model data;
         try {
-            data = RDFDataMgr.loadModel(path.toString());
+            data = JsonLd.load(path);
         } catch (RiotException e) {
             return "PARSE ERROR in " + file + ": " + e.getMessage();
         }
@@ -255,7 +256,7 @@ public final class DataValidator {
             all.add(ShaclGenerator.generate(ontology));
         }
         if (file != null) {
-            all.add(RDFDataMgr.loadModel(file.toString()));
+            all.add(JsonLd.load(file));
         }
         return Shapes.parse(all);
     }

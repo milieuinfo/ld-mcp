@@ -14,11 +14,12 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
-import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+
+import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
 
 /**
  * A register of known alignment modules between vocabularies, such as
@@ -71,7 +72,7 @@ public final class AlignmentRegister {
         }
         Model m = ModelFactory.createDefaultModel();
         try {
-            RDFParser.source(file).parse(m);
+            JsonLd.parser(file).parse(m);
         } catch (RiotException | RuntimeIOException e) {
             throw new IllegalArgumentException("Cannot read alignment register " + file + ": " + e.getMessage(), e);
         }

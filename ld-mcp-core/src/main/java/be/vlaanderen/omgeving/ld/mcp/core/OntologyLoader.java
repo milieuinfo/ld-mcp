@@ -13,7 +13,6 @@ import java.util.stream.Stream;
 
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.riot.RDFDataMgr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +109,7 @@ public final class OntologyLoader {
 
     private static void read(Model model, Path file) {
         try {
-            Model part = RDFDataMgr.loadModel(file.toString());
+            Model part = JsonLd.load(file);
             // Copy the triples only: Model.add(Model) would also copy the prefixes (including the empty one).
             part.getGraph().find().forEach(model.getGraph()::add);
             // The first declaration of a prefix wins; later files do not override it.

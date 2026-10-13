@@ -206,4 +206,32 @@ class VocabularyProfilerTest {
         assertTrue(out.contains("not checked: time budget exhausted"), out);
         assertTrue(ms < 1500, "took " + ms + " ms");
     }
+
+    @Test
+    void loadsARemoteJsonLdContextThroughTheFetcher() {
+        String doc = "{\"@context\": \"https://ctx.example/c.jsonld\", \"@id\": \"https://example.org/voc#A\", "
+                + "\"@type\": \"Class\"}";
+        String ctx = "{\"@context\": {\"Class\": \"http://www.w3.org/2002/07/owl#Class\"}}";
+        Fetcher f = (uri, accept) -> uri.toString().equals("https://ctx.example/c.jsonld")
+                ? new Fetcher.Response(200, "application/ld+json", ctx)
+                : accept.equals("application/ld+json")
+                        ? new Fetcher.Response(200, "application/ld+json", doc)
+                        : new Fetcher.Response(406, "text/html", "");
+        String out = new VocabularyProfiler(null, f, VocabularyProfiler.DEFAULT_CORE).profile("https://example.org/voc#", null);
+        assertTrue(out.contains("application/ld+json: 200, application/ld+json, 1 triples"), out);
+    }
+
+    @Test
+    void aRefusedRemoteJsonLdContextIsAParseFailure() {
+        String doc = "{\"@context\": \"https://ctx.example/c.jsonld\", \"@id\": \"https://example.org/voc#A\"}";
+        Fetcher f = (uri, accept) -> {
+            if (uri.getHost().equals("ctx.example")) {
+                throw new GuardedFetcher.RefusedException("refused: the server runs with --offline");
+            }
+            return accept.equals("application/ld+json") ? new Fetcher.Response(200, "application/ld+json", doc)
+                    : new Fetcher.Response(406, "text/html", "");
+        };
+        String out = new VocabularyProfiler(null, f, VocabularyProfiler.DEFAULT_CORE).profile("https://example.org/voc#", null);
+        assertTrue(out.contains("does not parse as JSON-LD") && out.contains("refused"), out);
+    }
 }

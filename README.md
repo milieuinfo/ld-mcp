@@ -32,7 +32,7 @@ Arguments:
 | `--lov-url <url>` | no | Base URL of the LOV API for `lov_search` and `vocabulary_profile`; default `https://lov.linkeddata.es/dataset/api/v2`. A request to LOV gets up to three attempts of 10 s, with pauses of 1 and 2 s, when it fails without an answer or with 429, 502, 503 or 504: the public server often drops the TLS handshake or does not answer |
 | `--core-namespace <iri>` | no, repeatable | Namespace that `vocabulary_profile` counts as the core when it reports links to the core; default SOSA, SSN, PROV-O, QUDT schema, OWL-Time, GeoSPARQL, SKOS and DCTERMS |
 | `--alignments <file>` | no | Register of known alignment modules (e.g. `registers/alignments.ttl` of [oslo-ld-kit](https://github.com/milieuinfo/oslo-ld-kit)): each module an `owl:Ontology` with `dcterms:references` to the namespaces it connects. Read again on every call of `vocabulary_profile`; if it cannot be read, a warning is logged and the profile is built without it |
-| `--offline` | no | Disables the tools that use the network (`lov_search`, `vocabulary_profile`); they then return an error |
+| `--offline` | no | The server makes no network requests: the tools that use the network (`lov_search`, `vocabulary_profile`) return an error. (Files are never parsed with network access anyway, see *Network policy*) |
 | `--allow-private-hosts` | no | Lets `vocabulary_profile` and `lov_search` fetch from hosts with a loopback, link-local, private, unique-local or shared address (vocabularies on an intranet). Without it such requests are refused, also after a redirect (see *Network policy*) |
 | `--max-response-bytes <n>` | no | Maximum size of one response body; default 20971520 (20 MB) |
 | `--network-budget <seconds>` | no | Time one call of `vocabulary_profile` may take, default 30; `lov_search` gets half. Checks that do not fit are reported as `not checked: time budget exhausted` |
@@ -59,6 +59,13 @@ model has read (a LOV record, a vocabulary). Every request therefore goes throug
 - LOV requests are retried only after a failure without an answer or a 429/502/503/504, honour
   `Retry-After`, and stop when the budget is spent. The LOV record gets at most half the budget of a
   profile: the live checks are authoritative.
+
+**JSON-LD contexts.** A JSON-LD file may name a remote `@context`. The server never fetches one
+while reading a file (data files for `validate_file`, ontologies, shapes, registers): such a file
+gives `PARSE ERROR … remote @context not allowed (<url>)`, also without `--offline`, so that a
+validation does not depend on a third party and a data file cannot make the server send requests.
+Use an inline context, or a local copy. Only `vocabulary_profile` loads the remote context of a
+vocabulary it fetched, under the policy above.
 
 The server checks the address before the request and the HTTP client resolves the host again, so
 DNS rebinding is not excluded; for a local tool that is accepted.

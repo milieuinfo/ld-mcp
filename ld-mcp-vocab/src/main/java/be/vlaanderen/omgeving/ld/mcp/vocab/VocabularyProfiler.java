@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -11,6 +12,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+
+import com.apicatalog.jsonld.JsonLdError;
+import com.apicatalog.jsonld.JsonLdErrorCode;
+import com.apicatalog.jsonld.document.JsonDocument;
+import com.apicatalog.jsonld.loader.DocumentLoader;
 
 import org.apache.jena.atlas.json.JsonObject;
 import org.apache.jena.query.Dataset;
@@ -30,6 +36,8 @@ import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
+
+import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
 
 /**
  * Builds a fact sheet about a vocabulary, to help decide whether to reuse it: what LOV records
@@ -290,7 +298,7 @@ public final class VocabularyProfiler {
         }
         Dataset ds = DatasetFactory.create();
         try {
-            RDFParser.fromString(r.body(), lang).base(iri).parse(ds);
+            RDFParser.fromString(r.body(), lang).base(iri).context(JsonLd.context(contexts(deadline))).parse(ds);
         } catch (RiotException e) {
             return new Attempt(head + ", does not parse as " + lang.getLabel() + " (" + e.getMessage() + ")", null);
         }
@@ -301,6 +309,26 @@ public final class VocabularyProfiler {
             return new Attempt(head + ", parses but contains no triples (e.g. only a JSON-LD @context)", null);
         }
         return new Attempt(head + ", " + m.size() + " triples", m);
+    }
+
+    /**
+     * Loads a remote JSON-LD context through the same fetcher (and so the same network policy and
+     * deadline) as the vocabulary itself; with {@code --offline} the fetcher refuses.
+     */
+    private DocumentLoader contexts(Deadline deadline) {
+        return (url, options) -> {
+            try {
+                Fetcher.Response r = fetcher.get(url, "application/ld+json, application/json", deadline);
+                if (!r.ok()) {
+                    throw new JsonLdError(JsonLdErrorCode.LOADING_REMOTE_CONTEXT_FAILED,
+                            "remote @context " + url + " answered " + r.status());
+                }
+                return JsonDocument.of(new StringReader(r.body()));
+            } catch (IOException e) {
+                throw new JsonLdError(JsonLdErrorCode.LOADING_REMOTE_CONTEXT_FAILED,
+                        "remote @context " + url + ": " + e.getMessage());
+            }
+        };
     }
 
     private static String mediaType(String contentType) {
