@@ -581,5 +581,16 @@ class DataValidatorTest {
         assertTrue(out.contains("Unknown property: urn:x:p"), out);
         assertTrue(out.contains("Unknown property: tag:x,2026:q"), out);
     }
+
+    @Test
+    void disjointnessFollowsEquivalentClassesAndNamesTheWay() throws IOException {
+        String out = validatorFor(ROLES + """
+                voc:Animal a owl:Class ; owl:disjointWith voc:Plant .
+                voc:Beast a owl:Class ; owl:equivalentClass voc:Animal .
+                voc:Plant a owl:Class .
+                """).validate(data("ex:x a voc:Beast , voc:Plant ."));
+        assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)\n- ex:x is a voc:Animal (as a voc:Beast) and a voc:Plant, "
+                + "which are disjoint classes"), out);
+    }
 }
 

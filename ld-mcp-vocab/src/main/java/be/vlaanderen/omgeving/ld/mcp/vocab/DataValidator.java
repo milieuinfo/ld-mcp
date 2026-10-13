@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +22,7 @@ import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.compose.Union;
 import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Literal;
@@ -30,9 +32,6 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.reasoner.Reasoner;
-import org.apache.jena.reasoner.ReasonerRegistry;
-import org.apache.jena.reasoner.ValidityReport;
 import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.apache.jena.riot.RiotException;
@@ -68,7 +67,7 @@ import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Step;
  *       namespace either;</li>
  *   <li>rule inference (optional, {@code --rules}) with the structural subset
  *       (subClassOf, subPropertyOf, inverseOf, domain, range);</li>
- *   <li>OWL consistency with OWLMiniReasoner and the {@code owl:disjointWith} subset
+ *   <li>class disjointness: {@code owl:disjointWith}
  *       (including {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}, expanded into
  *       pairs), on the model after inference;</li>
  *   <li>SHACL (optional, {@code --shapes} and/or {@code --generate-shapes}) on the data plus the
@@ -83,7 +82,12 @@ public final class DataValidator {
     private final VocabIndex index;
     private final Set<String> vocabularyNamespaces;
     private final Model structural;
-    private final Reasoner owlReasoner;
+    /** Named class → the named classes it is disjoint with (both directions). */
+    private final Map<String, Set<String>> disjoint;
+    /** Named class → its direct named superclasses. */
+    private final Map<String, Set<String>> superclasses;
+    /** Memo of {@link #closure(String)}. */
+    private final Map<String, Set<String>> closures = new java.util.concurrent.ConcurrentHashMap<>();
     private final Graph hierarchy;
     private final List<Rule> rules;
     private final Shapes shapes;
@@ -133,8 +137,21 @@ public final class DataValidator {
         this.vocabularyNamespaces = index.namespaces();
         this.structural = subset(ontology,
                 RDFS.subClassOf, RDFS.subPropertyOf, OWL.inverseOf, RDFS.domain, RDFS.range);
-        this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()
-                .bindSchema(disjointness(ontology));
+        this.disjoint = new HashMap<>();
+        disjointness(ontology).listStatements(null, OWL.disjointWith, (RDFNode) null).forEachRemaining(st -> {
+            String a = st.getSubject().getURI();
+            String b = st.getResource().getURI();
+            disjoint.computeIfAbsent(a, k -> new HashSet<>()).add(b);
+            disjoint.computeIfAbsent(b, k -> new HashSet<>()).add(a);
+        });
+        this.superclasses = new HashMap<>();
+        subset(ontology, RDFS.subClassOf).listStatements().forEachRemaining(st ->
+                superclasses.computeIfAbsent(st.getSubject().getURI(), k -> new HashSet<>()).add(st.getResource().getURI()));
+        // An equivalent class is a superclass in both directions.
+        subset(ontology, OWL.equivalentClass).listStatements().forEachRemaining(st -> {
+            superclasses.computeIfAbsent(st.getSubject().getURI(), k -> new HashSet<>()).add(st.getResource().getURI());
+            superclasses.computeIfAbsent(st.getResource().getURI(), k -> new HashSet<>()).add(st.getSubject().getURI());
+        });
         // Direct subClassOf triples suffice: SHACL follows rdfs:subClassOf* in the data graph itself.
         this.hierarchy = subset(ontology, RDFS.subClassOf).getGraph();
         this.rules = rules;
@@ -312,19 +329,70 @@ public final class DataValidator {
         return ModelFactory.createDefaultModel().add(data).add(inf.getDeductionsModel());
     }
 
+    /**
+     * Class disjointness: every resource whose types (asserted, or inferred by the rules), with all
+     * their superclasses, include two disjoint classes. The superclass closure comes from the
+     * ontologies, so this needs no rules; a general reasoner (OWLMiniReasoner) did the same, but
+     * nine times slower on large files.
+     */
     private Step disjointness(Model inferred, Model data) {
-        ValidityReport report = ModelFactory.createInfModel(owlReasoner, inferred).validate();
         List<Finding> findings = new ArrayList<>();
-        report.getReports().forEachRemaining(r -> {
-            Object ext = r.getExtension();
-            String iri = ext instanceof Node n && n.isURI() ? n.getURI() : null;
-            findings.add(new Finding(r.isError() ? Certainty.ERROR : Certainty.SUSPECT, "disjointness",
-                    ext == null ? "" : String.valueOf(ext), null, shorten(data, r.getDescription()), List.of(), null,
-                    iri, null));
-        });
+        if (!disjoint.isEmpty()) {
+            for (Resource subject : inferred.listSubjectsWithProperty(RDF.type).toList()) {
+                Map<String, String> via = new HashMap<>(); // class in the closure → the type it comes from
+                inferred.listObjectsOfProperty(subject, RDF.type).forEachRemaining(t -> {
+                    if (t.isURIResource()) {
+                        String type = t.asResource().getURI();
+                        closure(type).forEach(c -> via.putIfAbsent(c, type));
+                    }
+                });
+                Set<String> reported = new HashSet<>();
+                for (String a : new java.util.TreeSet<>(via.keySet())) {
+                    for (String b : disjoint.getOrDefault(a, Set.of())) {
+                        if (via.containsKey(b) && a.compareTo(b) < 0 && reported.add(a + " " + b)) {
+                            findings.add(disjointFinding(data, subject, a, b, via));
+                        }
+                    }
+                }
+            }
+        }
         findings.sort(Comparator.comparing(Finding::message));
-        boolean ok = report.isValid() && findings.isEmpty();
-        return new Step(Kind.DISJOINTNESS, ok ? Status.OK : Status.FINDINGS, findings, Map.of("valid", report.isValid()));
+        return new Step(Kind.DISJOINTNESS, findings.isEmpty() ? Status.OK : Status.FINDINGS, findings,
+                Map.of("valid", findings.isEmpty()));
+    }
+
+    private Finding disjointFinding(Model data, Resource subject, String a, String b, Map<String, String> via) {
+        String focus = subject.isURIResource() ? shortNode(data, subject.asNode()) : subject.toString();
+        String message = focus + " is a " + typed(data, a, via) + " and a " + typed(data, b, via)
+                + ", which are disjoint classes";
+        return new Finding(Certainty.ERROR, "disjointness", focus, null, message, List.of(), null,
+                subject.isURIResource() ? subject.getURI() : null, null);
+    }
+
+    /** "prov:Activity" or "prov:Activity (as a sosa:Observation)" when it is a superclass of a type. */
+    private static String typed(Model data, String cls, Map<String, String> via) {
+        String type = via.get(cls);
+        String c = shortNode(data, NodeFactory.createURI(cls));
+        return type.equals(cls) ? c : c + " (as a " + shortNode(data, NodeFactory.createURI(type)) + ")";
+    }
+
+    /** A class and all its named superclasses (cycles allowed). */
+    private Set<String> closure(String cls) {
+        Set<String> cached = closures.get(cls);
+        if (cached != null) {
+            return cached;
+        }
+        Set<String> out = new HashSet<>();
+        java.util.ArrayDeque<String> todo = new java.util.ArrayDeque<>(List.of(cls));
+        while (!todo.isEmpty()) {
+            String c = todo.pop();
+            if (out.add(c)) {
+                todo.addAll(superclasses.getOrDefault(c, Set.of()));
+            }
+        }
+        Set<String> result = Set.copyOf(out);
+        closures.put(cls, result);
+        return result;
     }
 
     private Step shacl(Model data) {
@@ -496,11 +564,10 @@ public final class DataValidator {
     }
 
     /**
-     * Collects the schema for the disjointness check: {@code owl:disjointWith} plus the pairs from
-     * {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf} (which use an RDF list and would
-     * otherwise drop out of the subset; OWLMiniReasoner only understands {@code owl:disjointWith}),
-     * and the class hierarchy ({@code rdfs:subClassOf} between named classes), so that an instance
-     * of a subclass meets the disjointness of its superclass also without {@code --rules}.
+     * Collects the disjointness axioms as {@code owl:disjointWith} pairs: {@code owl:disjointWith}
+     * itself plus the pairs from {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}
+     * (which use an RDF list), and the class hierarchy ({@code rdfs:subClassOf} between named
+     * classes).
      *
      * @param source the ontologies
      * @return a model with {@code owl:disjointWith} and {@code rdfs:subClassOf} triples between named

@@ -40,7 +40,7 @@ public record ValidationResult(Header header, List<Step> steps) {
         VOCAB,
         /** Rule inference with {@code --rules}. */
         INFERENCE,
-        /** Class disjointness with OWLMiniReasoner. */
+        /** Class disjointness, following the class hierarchy. */
         DISJOINTNESS,
         /** SHACL. */
         SHACL

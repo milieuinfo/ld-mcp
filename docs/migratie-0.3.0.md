@@ -249,3 +249,14 @@ own criteria"; het profiel vermeldt welke core actief is (de standaardset, of de
 het kader is.
 
 **Golden-diff:** geen.
+
+## Na 3.2: disjunctie zonder OWLMiniReasoner (prestatie)
+
+Een end-to-end-test van de CLI op `r-factor/rfactor.jsonld` (34 MB, 678.000 triples) liep meer dan
+15 minuten. Meting per stap: de disjunctiestap groeide superlineair, en was sinds 3.2 (de
+klassehiërarchie in het schema van OWLMiniReasoner) negen keer trager (160.000 triples: 1 s → 9–11 s).
+De stap berekent nu zelf, per resource, de superklassen (`rdfs:subClassOf`, `owl:equivalentClass` in
+beide richtingen) van zijn types (na `--rules`) en toetst ze aan de disjuncte paren. Zelfde betekenis,
+lineair: het bestand van 678.000 triples kost nu 12 s (waarvan 9 s parsen), de golden suite 9 s in
+plaats van 13–17 s. De melding zegt ook langs welk type: `ex:x is a voc:Animal (as a voc:Beast) and a
+voc:Plant, which are disjoint classes`.
