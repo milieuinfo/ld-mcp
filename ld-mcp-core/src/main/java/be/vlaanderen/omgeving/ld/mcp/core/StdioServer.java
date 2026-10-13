@@ -3,6 +3,7 @@ package be.vlaanderen.omgeving.ld.mcp.core;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -34,19 +35,36 @@ public final class StdioServer {
     public static void run(String name, String version, String instructions,
                            List<SyncToolSpecification> tools) throws InterruptedException {
         CountDownLatch stdinClosed = new CountDownLatch(1);
-        StdioServerTransportProvider transport = new StdioServerTransportProvider(
-                McpJsonDefaults.getMapper(), new EofSignallingStream(System.in, stdinClosed), System.out);
+        McpSyncServer server = start(name, version, instructions, tools,
+                new EofSignallingStream(System.in, stdinClosed), System.out);
+        stdinClosed.await();
+        server.closeGracefully();
+        System.exit(0);
+    }
 
-        McpSyncServer server = McpServer.sync(transport)
+    /**
+     * Starts a server on the given streams and returns at once; the server answers on its own
+     * threads until it is closed. {@link #run} uses it with stdin and stdout; tests use it with
+     * in-memory streams.
+     *
+     * @param name         server name reported to the client
+     * @param version      server version reported to the client
+     * @param instructions guidance for the model on when and how to use the tools
+     * @param tools        the tools the server offers
+     * @param in           where the client's JSON-RPC messages arrive
+     * @param out          where the server writes its JSON-RPC messages
+     * @return the running server; close it with {@link McpSyncServer#closeGracefully()}
+     */
+    public static McpSyncServer start(String name, String version, String instructions,
+                                      List<SyncToolSpecification> tools, InputStream in, OutputStream out) {
+        StdioServerTransportProvider transport = new StdioServerTransportProvider(
+                McpJsonDefaults.getMapper(), in, out);
+        return McpServer.sync(transport)
                 .serverInfo(name, version)
                 .instructions(instructions)
                 .capabilities(ServerCapabilities.builder().tools(false).build())
                 .tools(tools)
                 .build();
-
-        stdinClosed.await();
-        server.closeGracefully();
-        System.exit(0);
     }
 
     /** Signals the end of stdin (client gone), so that the process does not linger. */

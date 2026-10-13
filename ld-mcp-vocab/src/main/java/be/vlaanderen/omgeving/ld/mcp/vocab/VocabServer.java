@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+
 import be.vlaanderen.omgeving.ld.mcp.core.ServerArgs;
 import be.vlaanderen.omgeving.ld.mcp.core.StdioServer;
 import be.vlaanderen.omgeving.ld.mcp.core.Tools;
@@ -50,6 +52,26 @@ public final class VocabServer {
      * @throws InterruptedException if interrupted while serving
      */
     public static void main(String[] args) throws InterruptedException {
+        Setup setup = setup(args);
+        StdioServer.run("ld-mcp-vocab", VERSION, setup.instructions(), setup.tools());
+    }
+
+    /**
+     * What the server offers: the instructions for the model and the tools.
+     *
+     * @param instructions guidance for the model, reported in the handshake
+     * @param tools        the tools
+     */
+    record Setup(String instructions, List<SyncToolSpecification> tools) {
+    }
+
+    /**
+     * Reads the arguments, loads the ontologies and declares the tools.
+     *
+     * @param args see the class description
+     * @return the instructions and the tools
+     */
+    static Setup setup(String[] args) {
         ServerArgs parsed = ServerArgs.parse(args);
         List<Path> paths = parsed.required("ontologies").stream().map(Path::of).toList();
         Workspace workspace = new Workspace(paths,
@@ -69,7 +91,7 @@ public final class VocabServer {
         VocabularyProfiler profiler = new VocabularyProfiler(lov, fetcher, core);
         Path alignments = parsed.first("alignments").map(Path::of).orElse(null);
 
-        StdioServer.run("ld-mcp-vocab", VERSION,
+        return new Setup(
                 "Looks up classes and properties in the loaded ontologies ("
                         + termCount + " terms at start-up). Use lookup_term to check that a term "
                         + "exists before using it in RDF, search_terms to find a term, and "
@@ -136,6 +158,15 @@ public final class VocabServer {
                                 online(offline, a -> profiler.profile(Tools.requiredString(a, "vocabulary"),
                                         Tools.optionalString(a, "term"), register(alignments),
                                         workspace.current().index().model())))));
+    }
+
+    /**
+     * Returns the version of the jar.
+     *
+     * @return the {@code Implementation-Version} of the manifest, or {@code "dev"}
+     */
+    static String version() {
+        return VERSION;
     }
 
     /**
