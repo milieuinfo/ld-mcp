@@ -301,5 +301,17 @@ class ProtocolTest {
         assertEquals(TextReport.contentHash(a), TextReport.contentHash(b));
         assertFalse(TextReport.contentHash(a).equals(TextReport.contentHash(c)));
     }
+
+    @Test
+    void anUnreadableAlignmentRegisterIsSaidInTheProfile() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/voc", 200, "text/turtle", "<urn:a> <urn:b> <urn:c> .");
+            Path register = Files.writeString(dir.resolve("alignments.ttl"), "@prefix x <oops");
+            start("--lov-url", http.base() + "/lov", "--allow-private-hosts", "--alignments", register.toString());
+            String out = harness.callTool("vocabulary_profile", McpHarness.args(Map.of("vocabulary", http.base() + "/voc"))).text();
+            assertTrue(out.startsWith("Alignment register skipped: Cannot read alignment register"), out);
+            assertTrue(out.contains("register: none configured"), out);
+        }
+    }
 }
 
