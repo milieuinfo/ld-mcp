@@ -1,0 +1,9 @@
+Validation: src/main/input/temperatuur-raam/temperatuur-raam.ttl (138 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 303 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

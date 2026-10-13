@@ -1,0 +1,9 @@
+Validation: src/main/input/EnergieManagementSystem/bash/prefixen.ttl (0 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 0 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

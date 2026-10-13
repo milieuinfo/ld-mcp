@@ -1,0 +1,9 @@
+Validation: src/main/input/elektrisch-raam/elektrisch-raam.ttl (262 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 455 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

@@ -1,0 +1,9 @@
+Validation: src/main/input/waterkwaliteit/nacebel/nace2008.ttl (33 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 119 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

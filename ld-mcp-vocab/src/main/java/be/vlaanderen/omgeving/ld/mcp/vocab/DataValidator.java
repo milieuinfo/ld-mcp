@@ -5,13 +5,15 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 import org.apache.jena.rdf.model.InfModel;
@@ -130,7 +132,9 @@ public final class DataValidator {
     // ---------------------------------------------------------------- steps
 
     private void vocabulary(Model data, StringBuilder sb) {
-        Set<String> unknown = new LinkedHashSet<>();
+        // Sorted by IRI, then by kind: the order of the statements in a model is not stable.
+        Set<String> unknown = new TreeSet<>(Comparator.comparing((String u) -> u.substring(u.indexOf(": ") + 2))
+                .thenComparing(Comparator.naturalOrder()));
         data.listStatements().forEachRemaining(st -> {
             String p = st.getPredicate().getURI();
             if (!ontology.containsResource(ontology.createResource(p))) {
@@ -191,6 +195,7 @@ public final class DataValidator {
         ValidityReport report = ModelFactory.createInfModel(owlReasoner, inferred).validate();
         List<String> lines = new ArrayList<>();
         report.getReports().forEachRemaining(r -> lines.add("- " + shorten(data, r.getDescription())));
+        Collections.sort(lines);
         if (report.isValid() && lines.isEmpty()) {
             sb.append("\n[OWL] consistent\n");
             return;
@@ -223,6 +228,7 @@ public final class DataValidator {
         List<String> counts = new ArrayList<>();
         List<String> lines = new ArrayList<>();
         bySeverity.forEach((severity, entries) -> {
+            Collections.sort(entries);
             if (!entries.isEmpty() || severity == Severity.Violation) {
                 counts.add(entries.size() + " " + severityName(severity) + "(s)");
             }

@@ -1,0 +1,9 @@
+Validation: src/main/input/verkeersmetingen/verkeersmetingen.ttl (547 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 1023 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

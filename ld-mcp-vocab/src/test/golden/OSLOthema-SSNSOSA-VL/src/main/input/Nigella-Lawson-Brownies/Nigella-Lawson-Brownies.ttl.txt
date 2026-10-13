@@ -1,0 +1,9 @@
+Validation: src/main/input/Nigella-Lawson-Brownies/Nigella-Lawson-Brownies.ttl (573 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 902 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

@@ -1,0 +1,13 @@
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalwater_debieten.ttl (98 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 208 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 4 warning(s)
+- [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-jaardebiet-2400007-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-jaardebiet-2400007-2023  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

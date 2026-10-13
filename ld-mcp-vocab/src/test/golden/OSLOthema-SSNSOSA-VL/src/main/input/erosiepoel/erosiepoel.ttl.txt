@@ -1,0 +1,9 @@
+Validation: src/main/input/erosiepoel/erosiepoel.ttl (36 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 133 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

@@ -1,0 +1,13 @@
+Validation: src/main/input/overstort/alternatief/overstort_emissie.ttl (125 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 320 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 4 warning(s)
+- [warning] alt:obs-P_000000217952-20240727T140000Z-debiet  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] alt:obs-P_000000217952-20240727T140000Z-overstortduur  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] alt:obs-P_000000217952-20240727T140000Z-status  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] event:4004f4ea-117d-4e01-9b7d-6b6af865ad52  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

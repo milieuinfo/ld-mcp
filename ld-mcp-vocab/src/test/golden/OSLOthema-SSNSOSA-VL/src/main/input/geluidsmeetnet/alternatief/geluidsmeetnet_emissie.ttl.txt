@@ -1,0 +1,13 @@
+Validation: src/main/input/geluidsmeetnet/alternatief/geluidsmeetnet_emissie.ttl (469 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 944 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 4 warning(s)
+- [warning] ex:meetpost-F041  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
+- [warning] ex:meetpost-F045  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
+- [warning] ex:meetpost-M071  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
+- [warning] ex:meetpost-M072  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).

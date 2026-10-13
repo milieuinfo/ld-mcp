@@ -1,0 +1,9 @@
+Validation: src/main/input/waterkwaliteit/waterlopen/waterlopen_meetplaatsen.ttl (1656 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 1023 inferred triples
+
+[OWL] consistent
+
+[SHACL] conforms

@@ -1,0 +1,14 @@
+Validation: src/main/input/paleo/paleo_atmosfeer_alt.ttl (87 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 291 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 5 warning(s)
+- [warning] ex:C14Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:C14Observatie  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:CO2Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:CO2Observatie  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:PaleoCO2Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

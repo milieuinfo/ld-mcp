@@ -1,0 +1,10 @@
+Validation: src/main/input/geluidsmeetnet/geluidsmeetnet.ttl (5295 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 10621 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 1 warning(s)
+- [warning] ex:meetpost-M072  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).

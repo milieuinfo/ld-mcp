@@ -1,0 +1,12 @@
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_pfas.ttl (114 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 221 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 3 warning(s)
+- [warning] ex:observatie-brutovracht-2030042-2009-PAS_2521  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-brutovracht-2030042-2017-PAS_2529  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-brutovracht-2030042-2022-PAS_2525  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

@@ -1,0 +1,39 @@
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_concentraties/afvalwater_concentraties.ttl (325 triples)
+
+[VOCAB] ok
+
+[INFERENCE] 673 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 30 warning(s)
+- [warning] ex:observatie-16231-P_1017  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1017  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1100  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1100  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_118  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_118  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1180  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1180  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1188  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1188  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1228  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1228  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1238  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1238  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1442  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_1442  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_421  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_421  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_572  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_572  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_595  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_595  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_599  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_599  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_813  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_813  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_863  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_863  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_866  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+- [warning] ex:observatie-16231-P_866  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

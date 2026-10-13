@@ -1,0 +1,12 @@
+Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldIsolatieadvies/DatavoorbeeldIsolatieadvies_herzien.ttl (103 triples)
+
+[VOCAB ERROR] 2 unknown term(s)
+- Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#stadskantoor
+- Unknown resource: https://data.vlaanderen.be/ns/gebouw#stadskantoor
+
+[INFERENCE] 268 inferred triples
+
+[OWL] consistent
+
+[SHACL] 0 violation(s), 1 warning(s)
+- [warning] exec:meting-001  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
