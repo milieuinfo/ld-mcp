@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
+import java.time.Duration;
 import java.util.Map;
 
 import org.apache.jena.rdf.model.Model;
@@ -186,5 +187,23 @@ class VocabularyProfilerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new VocabularyProfiler(null, fetcher(TURTLE_ONLY), VocabularyProfiler.DEFAULT_CORE)
                         .profile("voc", null));
+    }
+
+    @Test
+    void reportsChecksThatDoNotFitInTheBudget() {
+        Fetcher slow = (uri, accept) -> {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return TURTLE_ONLY.getOrDefault(accept, new Fetcher.Response(406, "text/html", "<html/>"));
+        };
+        long start = System.nanoTime();
+        String out = new VocabularyProfiler(null, slow, VocabularyProfiler.DEFAULT_CORE, Duration.ofMillis(700))
+                .profile("https://example.org/voc#", null);
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertTrue(out.contains("not checked: time budget exhausted"), out);
+        assertTrue(ms < 1500, "took " + ms + " ms");
     }
 }

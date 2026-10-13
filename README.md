@@ -33,12 +33,35 @@ Arguments:
 | `--core-namespace <iri>` | no, repeatable | Namespace that `vocabulary_profile` counts as the core when it reports links to the core; default SOSA, SSN, PROV-O, QUDT schema, OWL-Time, GeoSPARQL, SKOS and DCTERMS |
 | `--alignments <file>` | no | Register of known alignment modules (e.g. `registers/alignments.ttl` of [oslo-ld-kit](https://github.com/milieuinfo/oslo-ld-kit)): each module an `owl:Ontology` with `dcterms:references` to the namespaces it connects. Read again on every call of `vocabulary_profile`; if it cannot be read, a warning is logged and the profile is built without it |
 | `--offline` | no | Disables the tools that use the network (`lov_search`, `vocabulary_profile`); they then return an error |
+| `--allow-private-hosts` | no | Lets `vocabulary_profile` and `lov_search` fetch from hosts with a loopback, link-local, private, unique-local or shared address (vocabularies on an intranet). Without it such requests are refused, also after a redirect (see *Network policy*) |
+| `--max-response-bytes <n>` | no | Maximum size of one response body; default 20971520 (20 MB) |
+| `--network-budget <seconds>` | no | Time one call of `vocabulary_profile` may take, default 30; `lov_search` gets half. Checks that do not fit are reported as `not checked: time budget exhausted` |
 | `--prefix-registry <file>` | no | RDF file whose prefix declarations serve as a registry of well-known namespaces, e.g. a download of [prefix.cc/popular/all.file.ttl](http://prefix.cc/popular/all.file.ttl); any syntax Jena reads will do, triples are ignored. Lets `validate_file` tell a vocabulary that exists but is not loaded from a namespace that is not known at all (see below). It is never loaded as an ontology, even if it lies under `--ontologies` (other tools that read that directory, such as a build pipeline, may not be so careful). Not bundled with the jar: the project decides which snapshot it uses. If it cannot be read, a warning is logged and validation goes on without it |
 
 Ontologies, rules, shapes and the prefix registry are loaded at start-up. On every tool call the server compares the
 path, size and modification time of those files with the previous load; if anything has been
 added, removed or modified, it reloads everything and regenerates the shapes. A restart is only
 needed after building a new jar.
+
+### Network policy
+
+`lov_search` and `vocabulary_profile` fetch URLs that come from the model, and from content the
+model has read (a LOV record, a vocabulary). Every request therefore goes through one policy:
+
+- only `http` and `https`;
+- the host is resolved first, and refused if any of its addresses is loopback, link-local
+  (including the cloud metadata address `169.254.169.254`), private, unique-local (`fc00::/7`),
+  shared (`100.64.0.0/10`), unspecified, broadcast or multicast, unless `--allow-private-hosts`;
+- redirects are followed by the server itself, at most five, and every hop is checked again;
+- one time-out per request (10 s for LOV, 20 s otherwise) covers connecting, the headers and the
+  whole body, within the budget of the call (`--network-budget`); a body larger than
+  `--max-response-bytes` is cut off;
+- LOV requests are retried only after a failure without an answer or a 429/502/503/504, honour
+  `Retry-After`, and stop when the budget is spent. The LOV record gets at most half the budget of a
+  profile: the live checks are authoritative.
+
+The server checks the address before the request and the HTTP client resolves the host again, so
+DNS rebinding is not excluded; for a local tool that is accepted.
 
 ### Validation report
 

@@ -78,13 +78,30 @@ public final class LovClient {
      * @throws IllegalArgumentException if the type is not supported or LOV cannot be reached
      */
     public String searchTerms(String query, String type, int limit, Predicate<String> isLoaded) {
+        return searchTerms(query, type, limit, isLoaded, Deadline.NONE);
+    }
+
+    /**
+     * Searches LOV for terms within a deadline, and lists the hits, marking which ones are already
+     * loaded.
+     *
+     * @param query    the text to search for, e.g. {@code Sample}
+     * @param type     {@code class}, {@code property}, or {@code null} for both
+     * @param limit    the maximum number of hits to list
+     * @param isLoaded tells whether a term IRI exists in the loaded ontologies
+     * @param deadline when the call must be done; retries stop when it is near
+     * @return the hits as text: a warning, the number of hits per vocabulary, and one line per hit
+     * @throws IllegalArgumentException if the type is not supported or LOV cannot be reached in time
+     */
+    public String searchTerms(String query, String type, int limit, Predicate<String> isLoaded,
+                              Deadline deadline) {
         if (type != null && !type.equals("class") && !type.equals("property")) {
             throw new IllegalArgumentException("type must be 'class' or 'property', not '" + type + "'");
         }
         String url = baseUrl + "/term/search?q=" + encode(query)
                 + (type == null ? "" : "&type=" + type)
                 + "&page_size=" + Math.max(1, limit);
-        JsonObject json = getJson(url);
+        JsonObject json = getJson(url, deadline);
 
         StringBuilder sb = new StringBuilder();
         sb.append("LOV: ").append(intValue(json, "total_results")).append(" hit(s) for '").append(query).append("'")
@@ -124,8 +141,20 @@ public final class LovClient {
      * @throws IllegalArgumentException if LOV cannot be reached
      */
     public Optional<JsonObject> vocabularyInfo(String vocab) {
+        return vocabularyInfo(vocab, Deadline.NONE);
+    }
+
+    /**
+     * Fetches the LOV record of a vocabulary within a deadline.
+     *
+     * @param vocab    the LOV prefix ({@code saref}) or the namespace IRI
+     * @param deadline when the call must be done; retries stop when it is near
+     * @return the record, or empty if LOV does not know the vocabulary
+     * @throws IllegalArgumentException if LOV cannot be reached in time
+     */
+    public Optional<JsonObject> vocabularyInfo(String vocab, Deadline deadline) {
         String url = baseUrl + "/vocabulary/info?vocab=" + encode(vocab);
-        Fetcher.Response response = fetch(url);
+        Fetcher.Response response = fetch(url, deadline);
         if (response.status() == 404) {
             return Optional.empty();
         }
@@ -170,36 +199,57 @@ public final class LovClient {
 
     // ---------------------------------------------------------------- helpers
 
-    private JsonObject getJson(String url) {
-        Fetcher.Response response = fetch(url);
+    private JsonObject getJson(String url, Deadline deadline) {
+        Fetcher.Response response = fetch(url, deadline);
         if (!response.ok()) {
             throw new IllegalArgumentException("LOV answered " + response.status() + " for " + url);
         }
         return parse(response.body(), url);
     }
 
-    private Fetcher.Response fetch(String url) {
+    /**
+     * Fetches with retries: after a failure without an answer or a transient status, waits (the
+     * pause, doubled each time, or longer if the server asks so with {@code Retry-After}) and tries
+     * again, as long as attempts and time are left.
+     */
+    private Fetcher.Response fetch(String url, Deadline deadline) {
         IOException last = null;
         Fetcher.Response response = null;
         Duration wait = pause;
+        int made = 0;
         for (int i = 1; i <= attempts; i++) {
             if (i > 1) {
-                sleep(wait);
+                Duration asked = response == null ? Duration.ZERO : response.retryAfter().orElse(Duration.ZERO);
+                Duration delay = asked.compareTo(wait) > 0 ? asked : wait;
+                if (delay.compareTo(deadline.remaining()) >= 0) {
+                    break; // no time left for another attempt
+                }
+                sleep(delay);
                 wait = wait.multipliedBy(2);
             }
+            if (deadline.expired()) {
+                break;
+            }
+            made++;
             try {
-                response = fetcher.get(URI.create(url), "application/json");
+                response = fetcher.get(URI.create(url), "application/json", deadline);
                 last = null;
                 if (!isTransient(response.status())) {
                     return response;
                 }
+            } catch (GuardedFetcher.RefusedException e) {
+                last = e;
+                response = null;
+                break; // the policy will refuse again
             } catch (IOException e) {
                 last = e;
+                response = null;
             }
         }
-        if (last != null) {
-            throw new IllegalArgumentException("Cannot reach LOV (" + url + "): " + last.getMessage()
-                    + (attempts > 1 ? " (" + attempts + " attempts)" : ""), last);
+        if (last != null || response == null) {
+            String why = last != null ? last.getMessage() : "time budget exhausted";
+            throw new IllegalArgumentException("Cannot reach LOV (" + url + "): " + why
+                    + (made > 1 ? " (" + made + " attempts)" : ""), last);
         }
         return response;
     }

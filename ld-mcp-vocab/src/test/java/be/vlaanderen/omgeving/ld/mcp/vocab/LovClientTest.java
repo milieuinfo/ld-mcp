@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -134,5 +135,54 @@ class LovClientTest {
         AtomicInteger unknown = new AtomicInteger();
         assertTrue(scripted(unknown, 404).vocabularyInfo("nope").isEmpty());
         assertEquals(1, unknown.get());
+    }
+
+    @Test
+    void waitsAsLongAsRetryAfterAsks() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = new LovClient("https://lov.example/api", (uri, accept) -> calls.getAndIncrement() == 0
+                ? new Fetcher.Response(429, "", "", Map.of("Retry-After", List.of("1")))
+                : new Fetcher.Response(404, "", ""), 3, Duration.ZERO);
+        long start = System.nanoTime();
+        assertTrue(lov.vocabularyInfo("x").isEmpty());
+        assertTrue(System.nanoTime() - start >= 900_000_000L, "did not wait for Retry-After");
+        assertEquals(2, calls.get());
+    }
+
+    @Test
+    void doesNotRetryBeyondTheDeadline() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = new LovClient("https://lov.example/api", (uri, accept) -> {
+            calls.incrementAndGet();
+            return new Fetcher.Response(503, "", "", Map.of("Retry-After", List.of("60")));
+        }, 3, Duration.ZERO);
+        long start = System.nanoTime();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> lov.vocabularyInfo("x", Deadline.after(Duration.ofSeconds(2))));
+        assertTrue(e.getMessage().contains("LOV answered 503"), e.getMessage());
+        assertEquals(1, calls.get());
+        assertTrue(System.nanoTime() - start < 1_000_000_000L);
+    }
+
+    @Test
+    void anExpiredDeadlineMakesNoRequest() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = scripted(calls, 200);
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> lov.searchTerms("x", null, 5, iri -> false, Deadline.after(Duration.ZERO)));
+        assertTrue(e.getMessage().contains("time budget exhausted"), e.getMessage());
+        assertEquals(0, calls.get());
+    }
+
+    @Test
+    void aRefusalIsNotRetried() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = new LovClient("https://lov.example/api", (uri, accept) -> {
+            calls.incrementAndGet();
+            throw new GuardedFetcher.RefusedException("refused: test");
+        }, 3, Duration.ofSeconds(5));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> lov.vocabularyInfo("x"));
+        assertTrue(e.getMessage().contains("refused: test"), e.getMessage());
+        assertEquals(1, calls.get());
     }
 }

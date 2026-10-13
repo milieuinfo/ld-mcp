@@ -23,6 +23,7 @@ import be.vlaanderen.omgeving.ld.mcp.core.Tools;
  *     [--prefix-registry prefixes.json]
  *     [--lov-url https://lov.linkeddata.es/dataset/api/v2] [--core-namespace http://…/] [--offline]
  *     [--alignments registers/alignments.ttl]
+ *     [--allow-private-hosts] [--max-response-bytes 20971520] [--network-budget 30]
  * </pre>
  *
  * The tools {@code lov_search} and {@code vocabulary_profile} use the network (LOV and the
@@ -82,13 +83,21 @@ public final class VocabServer {
         int termCount = workspace.current().index().size();
 
         boolean offline = parsed.flag("offline");
-        Fetcher fetcher = Fetcher.http(Duration.ofSeconds(20));
+        boolean allowPrivate = parsed.flag("allow-private-hosts");
+        long maxBytes = parsed.first("max-response-bytes").map(VocabServer::positiveLong)
+                .orElse(GuardedFetcher.DEFAULT_MAX_BYTES);
+        Duration budget = parsed.first("network-budget").map(s -> Duration.ofSeconds(positiveLong(s)))
+                .orElse(VocabularyProfiler.DEFAULT_BUDGET);
+        Fetcher fetcher = offline ? Fetcher.offline()
+                : new GuardedFetcher(Duration.ofSeconds(20), maxBytes, allowPrivate);
         // LOV often hangs or drops the handshake: a shorter time-out per attempt, and retries.
         LovClient lov = new LovClient(parsed.first("lov-url").orElse(LovClient.DEFAULT_BASE_URL),
-                Fetcher.http(Duration.ofSeconds(10)), LovClient.DEFAULT_ATTEMPTS, LovClient.DEFAULT_PAUSE);
+                offline ? Fetcher.offline() : new GuardedFetcher(Duration.ofSeconds(10), maxBytes, allowPrivate),
+                LovClient.DEFAULT_ATTEMPTS, LovClient.DEFAULT_PAUSE);
         List<String> core = parsed.all("core-namespace").isEmpty()
                 ? VocabularyProfiler.DEFAULT_CORE : parsed.all("core-namespace");
-        VocabularyProfiler profiler = new VocabularyProfiler(lov, fetcher, core);
+        VocabularyProfiler profiler = new VocabularyProfiler(lov, fetcher, core, budget);
+        Duration searchBudget = budget.dividedBy(2);
         Path alignments = parsed.first("alignments").map(Path::of).orElse(null);
 
         return new Setup(
@@ -140,7 +149,8 @@ public final class VocabServer {
                                         List.of("query")),
                                 online(offline, a -> lov.searchTerms(Tools.requiredString(a, "query"),
                                         Tools.optionalString(a, "type"), Tools.optionalInt(a, "limit", 15),
-                                        iri -> workspace.current().index().contains(iri)))),
+                                        iri -> workspace.current().index().contains(iri),
+                                        Deadline.after(searchBudget)))),
                         Tools.textTool("vocabulary_profile",
                                 "Builds a fact sheet about a vocabulary for deciding whether to reuse it: "
                                         + "its LOV record, whether the namespace and a sample term "
@@ -158,6 +168,18 @@ public final class VocabServer {
                                 online(offline, a -> profiler.profile(Tools.requiredString(a, "vocabulary"),
                                         Tools.optionalString(a, "term"), register(alignments),
                                         workspace.current().index().model())))));
+    }
+
+    private static long positiveLong(String s) {
+        try {
+            long n = Long.parseLong(s.strip());
+            if (n > 0) {
+                return n;
+            }
+        } catch (NumberFormatException e) {
+            // reported below
+        }
+        throw new IllegalArgumentException("Expected a positive whole number, not '" + s + "'");
     }
 
     /**

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import be.vlaanderen.omgeving.ld.mcp.vocab.support.HttpFixture;
 import be.vlaanderen.omgeving.ld.mcp.vocab.support.McpHarness;
 
 /** End-to-end tests over the MCP protocol: the server as a client sees it. */
@@ -91,5 +92,28 @@ class ProtocolTest {
         McpHarness.ToolResult r = start().callTool("lookup_term", McpHarness.args(Map.of("term", "nope:X")));
         assertTrue(r.isError());
         assertTrue(r.text().startsWith("Unknown prefix 'nope'"), r.text());
+    }
+
+    @Test
+    void vocabularyProfileDoesNotFetchFromLocalhost() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/voc", 200, "text/turtle", "<urn:a> <urn:b> <urn:c> .");
+            start("--lov-url", http.base() + "/lov");
+            McpHarness.ToolResult r = harness.callTool("vocabulary_profile",
+                    McpHarness.args(Map.of("vocabulary", http.base() + "/voc")));
+            assertTrue(r.text().contains("refused: 127.0.0.1 resolves to a loopback address"), r.text());
+            assertEquals(0, http.requests(), http.paths().toString());
+        }
+    }
+
+    @Test
+    void allowPrivateHostsLetsIntranetVocabulariesThrough() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/voc", 200, "text/turtle", "<urn:a> <urn:b> <urn:c> .");
+            start("--lov-url", http.base() + "/lov", "--allow-private-hosts");
+            McpHarness.ToolResult r = harness.callTool("vocabulary_profile",
+                    McpHarness.args(Map.of("vocabulary", http.base() + "/voc")));
+            assertTrue(r.text().contains("200, text/turtle, 1 triples"), r.text());
+        }
     }
 }

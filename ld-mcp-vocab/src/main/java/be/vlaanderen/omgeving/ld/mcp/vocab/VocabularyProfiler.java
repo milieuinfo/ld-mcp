@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,9 +71,13 @@ public final class VocabularyProfiler {
             SKOS.exactMatch, SKOS.closeMatch, SKOS.broadMatch, SKOS.narrowMatch, SKOS.relatedMatch);
     private static final int EXAMPLES = 5;
 
+    /** Default time budget of one profile. */
+    public static final Duration DEFAULT_BUDGET = Duration.ofSeconds(30);
+
     private final LovClient lov;
     private final Fetcher fetcher;
     private final List<String> core;
+    private final Duration budget;
 
     /**
      * Creates a profiler.
@@ -82,9 +87,23 @@ public final class VocabularyProfiler {
      * @param core    namespaces counted as the core, e.g. {@link #DEFAULT_CORE}
      */
     public VocabularyProfiler(LovClient lov, Fetcher fetcher, List<String> core) {
+        this(lov, fetcher, core, DEFAULT_BUDGET);
+    }
+
+    /**
+     * Creates a profiler with a time budget per profile.
+     *
+     * @param lov     client for LOV, or {@code null} to skip the LOV record
+     * @param fetcher how to dereference the vocabulary
+     * @param core    namespaces counted as the core, e.g. {@link #DEFAULT_CORE}
+     * @param budget  the time one profile may take; checks that do not fit are reported as not
+     *                checked
+     */
+    public VocabularyProfiler(LovClient lov, Fetcher fetcher, List<String> core, Duration budget) {
         this.lov = lov;
         this.fetcher = fetcher;
         this.core = List.copyOf(core);
+        this.budget = budget;
     }
 
     /**
@@ -116,6 +135,7 @@ public final class VocabularyProfiler {
      *                                  cannot be resolved while LOV is unavailable)
      */
     public String profile(String vocab, String sampleTerm, AlignmentRegister register, Model loaded) {
+        Deadline deadline = Deadline.after(budget);
         StringBuilder sb = new StringBuilder();
         sb.append("Fact sheet for '").append(vocab).append("'. Facts only; assess them yourself "
                 + "(e.g. against R17 of oslo-ld-kit). Live checks outweigh LOV, whose records can lag behind.\n\n");
@@ -125,7 +145,8 @@ public final class VocabularyProfiler {
         String lovError = null;
         if (lov != null) {
             try {
-                info = lov.vocabularyInfo(vocab);
+                // At most half the budget: the live checks below are authoritative, LOV is not.
+                info = lov.vocabularyInfo(vocab, Deadline.after(deadline.cap(budget.dividedBy(2))));
             } catch (IllegalArgumentException e) {
                 lovError = e.getMessage();
             }
@@ -152,7 +173,7 @@ public final class VocabularyProfiler {
         sb.append("\n## Dereferencing the namespace <").append(namespace).append(">\n");
         Model model = null;
         for (Map.Entry<String, Lang> e : ACCEPTS.entrySet()) {
-            Attempt a = attempt(namespace, e.getKey());
+            Attempt a = attempt(namespace, e.getKey(), deadline);
             sb.append("- Accept ").append(e.getKey()).append(": ").append(a.report()).append('\n');
             if (model == null && a.model() != null) {
                 model = a.model();
@@ -167,7 +188,7 @@ public final class VocabularyProfiler {
         if (sample != null) {
             sb.append("\n## Dereferencing a term <").append(sample).append(">\n");
             for (String accept : ACCEPTS.keySet()) {
-                sb.append("- Accept ").append(accept).append(": ").append(attempt(sample, accept).report()).append('\n');
+                sb.append("- Accept ").append(accept).append(": ").append(attempt(sample, accept, deadline).report()).append('\n');
             }
         }
 
@@ -249,10 +270,13 @@ public final class VocabularyProfiler {
     private record Attempt(String report, Model model) {
     }
 
-    private Attempt attempt(String iri, String accept) {
+    private Attempt attempt(String iri, String accept, Deadline deadline) {
+        if (deadline.expired()) {
+            return new Attempt("not checked: time budget exhausted", null);
+        }
         Fetcher.Response r;
         try {
-            r = fetcher.get(URI.create(iri), accept);
+            r = fetcher.get(URI.create(iri), accept, deadline);
         } catch (IOException | IllegalArgumentException e) {
             return new Attempt("request failed (" + e.getMessage() + ")", null);
         }
