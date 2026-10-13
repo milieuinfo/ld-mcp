@@ -323,10 +323,14 @@ that differs from `origin/main`, and an existing tag or release. It builds and t
 fresh git worktree (never the working tree, so nothing uncommitted can end up in the jar), with the
 version set from the argument, and checks that the jar reports it. Only if everything is green does
 it create and push the tag `v<version>` and create the GitHub release with `ld-mcp-vocab.jar` and
-`ld-mcp-vocab.jar.sha256` (`gh`, logged in). `--dry-run` does the checks, the build and the tests,
-and stops before tagging. If the release cannot be created after the tag was pushed, the script
-keeps the files and prints the `gh release create` command to retry with. Afterwards, raise the
-poms to the next development version (`mvn versions:set -DnewVersion=<next>-SNAPSHOT`).
+`ld-mcp-vocab.jar.sha256` (`gh`, logged in). Then it sets all three poms to the next development
+version, by default the patch version plus one (`0.4.0` → `0.4.1-SNAPSHOT`; `--next 0.5.0` for
+another), checks that they are all on it, commits that and pushes it. Before anything else it checks
+that the modules name the root pom's version as their parent: otherwise they build against an old
+parent from the local Maven repository. `--dry-run` does the checks, the build and the tests, and
+says which version would come next, without tagging, publishing or changing anything. If the
+release cannot be created after the tag was pushed, the script keeps the files and prints the
+`gh release create` command to retry with.
 
 ## Use in another project
 
