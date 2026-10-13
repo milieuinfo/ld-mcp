@@ -71,6 +71,15 @@ public final class LovClient {
     }
 
     /**
+     * Returns the base URL of the API.
+     *
+     * @return the base URL, without trailing slash
+     */
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    /**
      * Searches LOV for terms and lists the hits, marking which ones are already loaded.
      *
      * @param query    the text to search for, e.g. {@code Sample}
@@ -107,33 +116,37 @@ public final class LovClient {
         JsonObject json = getJson(url, deadline);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("LOV: ").append(intValue(json, "total_results")).append(" hit(s) for '").append(query).append("'")
+        sb.append("LOV: ").append(Untrusted.literal(intValue(json, "total_results"))).append(" hit(s) for '")
+                .append(Untrusted.literal(query)).append("'")
                 .append(type == null ? "" : " (" + type + ")").append(".\n")
                 .append("Note: LOV ranks by text match, not by suitability. A hit is a candidate to assess "
                         + "(e.g. against R17 of oslo-ld-kit), never a recommendation.\n");
 
+        StringBuilder hits = new StringBuilder();
         JsonArray buckets = path(json, "aggregations", "vocabs", "buckets").map(JsonValue::getAsArray).orElse(null);
         if (buckets != null && !buckets.isEmpty()) {
             List<String> parts = new ArrayList<>();
             for (JsonValue b : buckets) {
                 JsonObject o = b.getAsObject();
-                parts.add(string(o, "key") + " (" + intValue(o, "doc_count") + ")");
+                parts.add(Untrusted.literal(string(o, "key")) + " (" + Untrusted.literal(intValue(o, "doc_count")) + ")");
             }
-            sb.append("Per vocabulary: ").append(String.join(", ", parts)).append('\n');
+            hits.append("Per vocabulary: ").append(String.join(", ", parts)).append('\n');
         }
 
         JsonArray results = json.hasKey("results") ? json.get("results").getAsArray() : new JsonArray();
         if (results.isEmpty()) {
-            return sb.append("No hits.").toString();
+            hits.append("No hits.\n");
+            return sb.append(Untrusted.block(Untrusted.host(baseUrl), hits.toString())).toString();
         }
         for (JsonValue r : results) {
             JsonObject o = r.getAsObject();
             String uri = firstString(o.get("uri"));
             String loaded = isLoaded.test(uri) ? "loaded" : "not loaded";
-            sb.append("- ").append(string(o, "prefixedName")).append("  <").append(uri).append(">  [")
-                    .append(string(o, "type")).append(", ").append(loaded).append("]\n");
+            hits.append("- ").append(Untrusted.literal(string(o, "prefixedName"))).append("  <")
+                    .append(Untrusted.literal(uri)).append(">  [")
+                    .append(Untrusted.literal(string(o, "type"))).append(", ").append(loaded).append("]\n");
         }
-        return sb.toString();
+        return sb.append(Untrusted.block(Untrusted.host(baseUrl), hits.toString())).toString();
     }
 
     /**
@@ -369,7 +382,7 @@ public final class LovClient {
     }
 
     private static void line(StringBuilder sb, String key, String value) {
-        sb.append(key).append(": ").append(value == null || value.isEmpty() ? "-" : value).append('\n');
+        sb.append(key).append(": ").append(value == null || value.isEmpty() ? "-" : Untrusted.literal(value)).append('\n');
     }
 
     private static String encode(String s) {

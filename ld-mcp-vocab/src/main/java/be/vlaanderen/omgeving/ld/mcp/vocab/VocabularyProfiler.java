@@ -163,7 +163,7 @@ public final class VocabularyProfiler {
         if (lovError != null) {
             sb.append("unavailable: ").append(lovError).append('\n');
         } else {
-            sb.append(info.map(LovClient::summarise).orElse("not in LOV\n"));
+            sb.append(info.map(i -> Untrusted.block(lovHost(), LovClient.summarise(i))).orElse("not in LOV\n"));
         }
 
         String namespace = info.map(i -> i.hasKey("nsp") ? i.get("nsp").getAsString().value() : null)
@@ -201,8 +201,14 @@ public final class VocabularyProfiler {
         }
 
         sb.append("\n## Content of the vocabulary (").append(model.size()).append(" triples)\n");
-        describe(sb, model, namespace);
+        StringBuilder content = new StringBuilder();
+        describe(content, model, namespace);
+        sb.append(Untrusted.block(Untrusted.host(namespace), content.toString()));
         return sb.toString();
+    }
+
+    private String lovHost() {
+        return lov == null ? "LOV" : "LOV (" + Untrusted.host(lov.baseUrl()) + ")";
     }
 
     // ---------------------------------------------------------------- alignments
@@ -217,18 +223,18 @@ public final class VocabularyProfiler {
             for (AlignmentRegister.Entry e : found) {
                 List<String> others = e.namespaces().stream()
                         .filter(n -> !(namespace.startsWith(n) || n.startsWith(namespace))).toList();
-                sb.append("- <").append(e.iri()).append(">")
-                        .append(e.title().isEmpty() ? "" : " " + e.title())
+                sb.append("- <").append(Untrusted.literal(e.iri())).append(">")
+                        .append(e.title().isEmpty() ? "" : " " + Untrusted.literal(e.title()))
                         .append("\n  connects with: ").append(String.join(", ", others))
                         .append("\n  loaded: ").append(loaded == null ? "unknown" : isLoaded(loaded, e) ? "yes" : "no");
                 if (!e.comment().isEmpty()) {
-                    sb.append("\n  status: ").append(e.comment());
+                    sb.append("\n  status: ").append(Untrusted.literal(e.comment()));
                 }
                 if (!e.source().isEmpty()) {
-                    sb.append("\n  source: ").append(e.source());
+                    sb.append("\n  source: ").append(Untrusted.literal(e.source()));
                 }
                 if (!e.seeAlso().isEmpty()) {
-                    sb.append("\n  documentation: ").append(e.seeAlso());
+                    sb.append("\n  documentation: ").append(Untrusted.literal(e.seeAlso()));
                 }
                 sb.append('\n');
             }
@@ -286,9 +292,9 @@ public final class VocabularyProfiler {
         try {
             r = fetcher.get(URI.create(iri), accept, deadline);
         } catch (IOException | IllegalArgumentException e) {
-            return new Attempt("request failed (" + e.getMessage() + ")", null);
+            return new Attempt("request failed (" + Untrusted.literal(e.getMessage()) + ")", null);
         }
-        String head = r.status() + ", " + (r.contentType().isEmpty() ? "no content type" : r.contentType());
+        String head = r.status() + ", " + (r.contentType().isEmpty() ? "no content type" : Untrusted.literal(r.contentType()));
         if (!r.ok()) {
             return new Attempt(head, null);
         }
@@ -300,7 +306,7 @@ public final class VocabularyProfiler {
         try {
             RDFParser.fromString(r.body(), lang).base(iri).context(JsonLd.context(contexts(deadline))).parse(ds);
         } catch (RiotException e) {
-            return new Attempt(head + ", does not parse as " + lang.getLabel() + " (" + e.getMessage() + ")", null);
+            return new Attempt(head + ", does not parse as " + lang.getLabel() + " (" + Untrusted.literal(e.getMessage()) + ")", null);
         }
         // Some publishers wrap the vocabulary in a named graph (JSON-LD @graph with an @id).
         Model m = ModelFactory.createDefaultModel().add(ds.getDefaultModel()).add(ds.getUnionModel());
@@ -475,10 +481,10 @@ public final class VocabularyProfiler {
         if (n.isURIResource()) {
             String iri = n.asResource().getURI();
             String s = m.shortForm(iri);
-            return s.equals(iri) || s.startsWith(":") ? "<" + iri + ">" : s;
+            return Untrusted.literal(s.equals(iri) || s.startsWith(":") ? "<" + iri + ">" : s);
         }
         if (n.isLiteral()) {
-            return "\"" + n.asLiteral().getLexicalForm() + "\"";
+            return "\"" + Untrusted.literal(n.asLiteral().getLexicalForm()) + "\"";
         }
         return "[]";
     }
