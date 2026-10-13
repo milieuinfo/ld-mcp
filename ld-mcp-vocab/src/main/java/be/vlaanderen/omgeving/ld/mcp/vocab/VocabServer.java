@@ -104,7 +104,8 @@ public final class VocabServer {
                 parsed.all("rules").stream().map(Path::of).toList(),
                 parsed.all("shapes").stream().map(Path::of).toList(),
                 parsed.flag("generate-shapes"),
-                parsed.first("prefix-registry").map(Path::of).orElse(null));
+                parsed.first("prefix-registry").map(Path::of).orElse(null))
+                .describedAs(VERSION, Map.of("offline", String.valueOf(parsed.flag("offline"))));
         int termCount = workspace.current().index().size();
 
         boolean offline = parsed.flag("offline");

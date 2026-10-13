@@ -89,11 +89,11 @@ class GoldenSuiteTest {
     }
 
     /**
-     * Leaves out what changes without a change in behaviour. The identity, as long as the report
-     * contains nothing that depends on the environment.
+     * Leaves out what changes without a change in behaviour: the configuration line (server version
+     * and content hash of the loaded files, which change with every edit in the project).
      */
     static String normalise(String report) {
-        return report;
+        return report.replaceAll("(?m)^" + java.util.regex.Pattern.quote(TextReport.CONFIGURATION) + ".*\\R", "");
     }
 
     /** The arguments after the jar in the project's .mcp.json, with paths made absolute. */

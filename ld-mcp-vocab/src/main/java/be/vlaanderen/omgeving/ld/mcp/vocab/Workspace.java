@@ -1,14 +1,19 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -80,6 +85,8 @@ public final class Workspace {
 
     private Map<Path, String> fingerprint;
     private State state;
+    private String serverVersion = "dev";
+    private Map<String, String> serverOptions = Map.of();
     /** The last rules and hand-written shapes that parsed, to fall back on. */
     private List<Rule> lastRules;
     private Model lastShapes;
@@ -148,6 +155,19 @@ public final class Workspace {
         return state;
     }
 
+    /**
+     * Sets what the header of a validation report says about the server, besides the files.
+     *
+     * @param version the version of the jar
+     * @param options the active options that the workspace does not know itself (e.g. offline)
+     * @return this workspace
+     */
+    public synchronized Workspace describedAs(String version, Map<String, String> options) {
+        this.serverVersion = version;
+        this.serverOptions = Map.copyOf(options);
+        return this;
+    }
+
     private State load() {
         List<String> problems = new ArrayList<>();
         OntologyLoader.Loaded loaded = OntologyLoader.loadReporting(ontologies, excluded());
@@ -157,7 +177,40 @@ public final class Workspace {
         List<Rule> parsedRules = rules(problems);
         Shapes parsedShapes = shapes(ontology, problems);
         PrefixRegistry registry = registry(problems);
-        return new State(index, new DataValidator(ontology, index, parsedRules, parsedShapes, registry), problems);
+        DataValidator validator = new DataValidator(ontology, index, parsedRules, parsedShapes, registry)
+                .withConfiguration(configuration(problems));
+        return new State(index, validator, problems);
+    }
+
+    /** The files and options of this load, for the report header. */
+    private ValidationResult.Configuration configuration(List<String> problems) {
+        List<ValidationResult.LoadedFile> files = new ArrayList<>();
+        OntologyLoader.files(ontologies, excluded()).forEach(f -> files.add(loadedFile("ontology", f)));
+        rules.forEach(f -> files.add(loadedFile("rules", f)));
+        shapes.forEach(f -> files.add(loadedFile("shapes", f)));
+        if (prefixRegistry != null) {
+            files.add(loadedFile("prefix-registry", prefixRegistry));
+        }
+        Map<String, String> options = new TreeMap<>(serverOptions);
+        options.put("generate-shapes", String.valueOf(generateShapes));
+        return new ValidationResult.Configuration(serverVersion, files, options, problems);
+    }
+
+    private static ValidationResult.LoadedFile loadedFile(String role, Path file) {
+        String hash;
+        try (InputStream in = Files.newInputStream(file)) {
+            MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[64 * 1024];
+            for (int n; (n = in.read(buffer)) > 0; ) {
+                sha.update(buffer, 0, n);
+            }
+            hash = HexFormat.of().formatHex(sha.digest());
+        } catch (IOException e) {
+            hash = "unreadable";
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e); // every JVM has SHA-256
+        }
+        return new ValidationResult.LoadedFile(role, file.toAbsolutePath().toString(), hash);
     }
 
     /** The rules of all files; on a failure the previous rules, or none. */

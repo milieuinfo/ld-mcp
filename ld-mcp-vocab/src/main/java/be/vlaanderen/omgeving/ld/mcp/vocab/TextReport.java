@@ -1,6 +1,10 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,9 @@ public final class TextReport {
         }
         StringBuilder sb = new StringBuilder();
         sb.append("Validation: ").append(h.file()).append(" (").append(h.triples()).append(" triples)\n");
+        if (h.configuration() != null) {
+            sb.append(configurationLine(h.configuration())).append('\n');
+        }
         for (Step step : result.steps()) {
             switch (step.kind()) {
                 case VOCAB -> vocab(step, sb);
@@ -110,6 +117,60 @@ public final class TextReport {
         });
         sb.append("\n[SHACL] ").append(String.join(", ", counts)).append('\n');
         appendCapped(sb, lines);
+    }
+
+    /** The prefix of the configuration line, by which a caller can recognise it. */
+    static final String CONFIGURATION = "Configuration: ";
+
+    /**
+     * Summarises the configuration on one line: the server version, how many files of each role,
+     * the switches that are on, and a content hash of all loaded files (the full list with a
+     * SHA-256 per file is in the structured result).
+     *
+     * @param c the configuration
+     * @return the line, starting with {@value #CONFIGURATION}
+     */
+    static String configurationLine(ValidationResult.Configuration c) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String role : List.of("ontology", "rules", "shapes", "prefix-registry")) {
+            counts.put(role, 0);
+        }
+        c.files().forEach(f -> counts.merge(f.role(), 1, Integer::sum));
+        List<String> parts = new ArrayList<>();
+        parts.add(counts.get("ontology") + " ontology file(s)");
+        if (counts.get("rules") > 0) {
+            parts.add(counts.get("rules") + " rules file(s)");
+        }
+        if (counts.get("shapes") > 0) {
+            parts.add(counts.get("shapes") + " shapes file(s)");
+        }
+        if (counts.get("prefix-registry") > 0) {
+            parts.add("prefix registry");
+        }
+        c.options().forEach((k, v) -> {
+            if (v.equals("true")) {
+                parts.add(k);
+            } else if (!v.equals("false")) {
+                parts.add(k + " " + v);
+            }
+        });
+        return CONFIGURATION + "ld-mcp-vocab " + c.serverVersion() + "; " + String.join(", ", parts)
+                + "; content hash " + contentHash(c);
+    }
+
+    /**
+     * A short hash over the roles and content hashes of the loaded files, independent of where they
+     * lie: the same files give the same hash on every machine.
+     */
+    static String contentHash(ValidationResult.Configuration c) {
+        try {
+            MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            c.files().stream().map(f -> f.role() + " " + f.sha256()).sorted()
+                    .forEach(line -> sha.update((line + "\n").getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of().formatHex(sha.digest()).substring(0, 12);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**

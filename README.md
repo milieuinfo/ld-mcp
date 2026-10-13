@@ -91,7 +91,11 @@ DNS rebinding is not excluded; for a local tool that is accepted.
 
 ### Validation report
 
-`validate_file` reports each step on its own line:
+`validate_file` starts with the file and its number of triples, then a line
+`Configuration: ld-mcp-vocab <version>; <n> ontology file(s), …; content hash <12 hex>`: the jar
+version, the loaded files per role, the switches that are on, and a hash over the SHA-256 of every
+loaded file (the same files give the same hash on every machine), so that a result can be
+reproduced. Then it reports each step on its own line:
 
 | Marker | Meaning |
 |---|---|

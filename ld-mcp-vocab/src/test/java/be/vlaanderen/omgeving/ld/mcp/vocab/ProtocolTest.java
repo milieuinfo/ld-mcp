@@ -272,5 +272,34 @@ class ProtocolTest {
         McpHarness.ToolResult missing = harness.callTool("validate_file", McpHarness.args(Map.of("path", "nope.ttl")));
         assertTrue(missing.isError() && missing.text().startsWith("File not found: "), missing.text());
     }
+
+    @Test
+    void theReportNamesTheConfiguration() throws IOException {
+        Path rules = Files.writeString(dir.resolve("r.rules"), "");
+        start("--rules", rules.toString(), "--generate-shapes", "--offline");
+        Path data = Files.writeString(dir.resolve("d.ttl"), "<urn:a> a <https://example.org/voc/Thing> .");
+        String report = harness.callTool("validate_file", McpHarness.args(Map.of("path", "d.ttl"))).text();
+        String line = report.lines().skip(1).findFirst().orElseThrow();
+        assertTrue(line.matches("Configuration: ld-mcp-vocab dev; 1 ontology file\\(s\\), 1 rules file\\(s\\), "
+                + "generate-shapes, offline; content hash [0-9a-f]{12}"), line);
+        // The same files give the same hash.
+        String again = harness.callTool("validate_file", McpHarness.args(Map.of("path", "d.ttl"))).text();
+        assertEquals(line, again.lines().skip(1).findFirst().orElseThrow());
+        assertTrue(data.toFile().exists());
+    }
+
+    @Test
+    void theContentHashFollowsTheContentNotThePaths() {
+        ValidationResult.Configuration a = new ValidationResult.Configuration("v", List.of(
+                new ValidationResult.LoadedFile("ontology", "/a/x.ttl", "11"),
+                new ValidationResult.LoadedFile("rules", "/a/r.rules", "22")), Map.of(), List.of());
+        ValidationResult.Configuration b = new ValidationResult.Configuration("v", List.of(
+                new ValidationResult.LoadedFile("rules", "/b/r.rules", "22"),
+                new ValidationResult.LoadedFile("ontology", "/b/y.ttl", "11")), Map.of(), List.of());
+        ValidationResult.Configuration c = new ValidationResult.Configuration("v", List.of(
+                new ValidationResult.LoadedFile("ontology", "/a/x.ttl", "12")), Map.of(), List.of());
+        assertEquals(TextReport.contentHash(a), TextReport.contentHash(b));
+        assertFalse(TextReport.contentHash(a).equals(TextReport.contentHash(c)));
+    }
 }
 
