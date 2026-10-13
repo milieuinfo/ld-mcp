@@ -244,5 +244,17 @@ class WorkspaceTest {
         Workspace.State state = new Workspace(List.of(dir), List.of(), List.of(), false, null).current();
         assertTrue(state.index().search("SampleShape", 10).startsWith("No terms found"));
     }
+
+    @Test
+    void theReportCountsAndListsWhatWasNotTranslated(@TempDir Path elsewhere) throws IOException {
+        try (var in = getClass().getResourceAsStream("/generator/untranslatable.ttl")) {
+            Files.write(dir.resolve("onto.ttl"), in.readAllBytes());
+        }
+        Workspace ws = new Workspace(List.of(dir), List.of(), List.of(), true, null);
+        Path data = Files.writeString(elsewhere.resolve("d.ttl"), "<urn:a> <urn:b> <urn:c> .");
+        ValidationResult r = ws.current().validator().check(data, "d.ttl");
+        assertEquals(6, r.header().configuration().notTranslated().size());
+        assertTrue(TextReport.render(r).contains("6 restriction(s) not translated"), TextReport.render(r));
+    }
 }
 

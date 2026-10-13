@@ -175,18 +175,41 @@ A file that cannot be parsed yields `PARSE ERROR` with the position of the error
 
 ### Generated shapes (`--generate-shapes`)
 
-For every `owl:Class` a NodeShape `<class>Shape` with one PropertyShape per path:
+**A profile reading, not an OWL translation.** OWL restrictions never make data invalid: an
+`owl:someValuesFrom` without a value, or one value too many for an `owl:maxCardinality`, is no error
+in OWL (open world; a reasoner infers an unknown value or `owl:sameAs`). `--generate-shapes` reads
+the restrictions deliberately as requirements on the data (closed world), as an application profile
+would. For every named class (`owl:Class` or `rdfs:Class`) with at least one translatable
+restriction, a NodeShape `urn:x-ld-mcp:shape:<encoded class IRI>` (an IRI of its own, so that it
+never collides with a term) with property shapes:
 
 | OWL | SHACL |
 |---|---|
-| `owl:someValuesFrom` / `owl:allValuesFrom` | `sh:class`, or `sh:datatype` for `xsd:` types |
-| `owl:unionOf` as value | `sh:or` |
-| `owl:cardinality` / `owl:minCardinality` / `owl:maxCardinality` | `sh:minCount` / `sh:maxCount` |
-| `owl:someValuesFrom` | implied `sh:minCount 1`, unless the same class has an `owl:minCardinality 0` restriction on that property |
+| `owl:allValuesFrom C` | `sh:class C` on every value; `sh:datatype` for a datatype (`xsd:…`, `rdf:langString`, `rdf:HTML`, `rdf:XMLLiteral`, `rdf:JSON`, `rdf:dirLangString`, or `a rdfs:Datatype` in the ontologies, such as `geo:wktLiteral`); `sh:nodeKind sh:Literal` for `rdfs:Literal`; nothing for `owl:Thing` or `rdfs:Resource` |
+| `owl:unionOf ( A B )` as value | `sh:or ( [sh:class A] [sh:class B] )` |
+| `owl:someValuesFrom C` | at least one value is a C: a property shape of its own with `sh:qualifiedValueShape [ sh:class C ]` and `sh:qualifiedMinCount 1` (for `owl:Thing`: `sh:minCount 1`) |
+| `owl:minQualifiedCardinality` / `owl:maxQualifiedCardinality` / `owl:qualifiedCardinality` with `owl:onClass` or `owl:onDataRange` | `sh:qualifiedValueShape` with `sh:qualifiedMinCount` / `sh:qualifiedMaxCount` |
+| `owl:cardinality` / `owl:minCardinality` / `owl:maxCardinality` | `sh:minCount` / `sh:maxCount`; several on one path merged (largest minimum, smallest maximum) |
+| `owl:hasValue v` | `sh:hasValue v` |
+| restrictions inside `owl:intersectionOf`, on `rdfs:subClassOf` or within `owl:equivalentClass` | translated per member |
 | anonymous property with `owl:inverseOf` | `sh:inversePath` |
 
-Several restrictions on the same path are merged (largest minimum, smallest maximum).
-Same result as `OwlToShaclGenerator` in OSLOthema-SSNSOSA-VL.
+**Convention of this tool (not OWL semantics):** an `owl:minCardinality 0` restriction on a class
+and property cancels an `owl:someValuesFrom` on the same class and property. In OWL it is a
+tautology that changes nothing; here it lets a profile keep an existential restriction in the
+ontology (it defines the class) without making it mandatory in the data. If the values must still be
+of a class, add an `owl:allValuesFrom`.
+
+**Not translated**, and never translated into something stricter: a union with an anonymous member
+that is no union itself, an empty union, `owl:complementOf`, `owl:oneOf`, restrictions on a property
+chain or other anonymous property, and anonymous superclasses that are no restriction or
+intersection. Identical restrictions (repeated in a file, or in two files that define the class)
+give one constraint. The configuration line of every report counts the node shapes, property shapes
+and restrictions not translated; the server log lists the latter, and so does the export with
+`generate-shapes` (see *Command line*).
+
+Validation draws no conclusions from `owl:` axioms other than these restrictions and disjointness;
+SHACL shapes written by hand (`--shapes`) are the place for everything else.
 
 ## Download
 

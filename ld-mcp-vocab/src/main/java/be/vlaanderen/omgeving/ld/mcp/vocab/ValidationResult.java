@@ -74,9 +74,23 @@ public record ValidationResult(Header header, List<Step> steps) {
      * @param files         the loaded files, with their SHA-256
      * @param options       the active options (rules, shapes, generate-shapes, …)
      * @param problems      what could not be loaded
+     * @param notTranslated the OWL restrictions that {@code --generate-shapes} could not translate
      */
     public record Configuration(String serverVersion, List<LoadedFile> files, Map<String, String> options,
-                                List<String> problems) {
+                                List<String> problems, List<String> notTranslated) {
+
+        /**
+         * A configuration without generated shapes to report on.
+         *
+         * @param serverVersion the version of the jar
+         * @param files         the loaded files
+         * @param options       the active options
+         * @param problems      what could not be loaded
+         */
+        public Configuration(String serverVersion, List<LoadedFile> files, Map<String, String> options,
+                             List<String> problems) {
+            this(serverVersion, files, options, problems, List.of());
+        }
     }
 
     /**

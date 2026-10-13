@@ -281,7 +281,8 @@ class ProtocolTest {
         String report = harness.callTool("validate_file", McpHarness.args(Map.of("path", "d.ttl"))).text();
         String line = report.lines().skip(1).findFirst().orElseThrow();
         assertTrue(line.matches("Configuration: ld-mcp-vocab dev; 1 ontology file\\(s\\), 1 rules file\\(s\\), "
-                + "generate-shapes, offline; content hash [0-9a-f]{12}"), line);
+                + "generate-shapes \\(0 node shapes, 0 property shapes, 0 restriction\\(s\\) not translated\\), "
+                + "offline; content hash [0-9a-f]{12}"), line);
         // The same files give the same hash.
         String again = harness.callTool("validate_file", McpHarness.args(Map.of("path", "d.ttl"))).text();
         assertEquals(line, again.lines().skip(1).findFirst().orElseThrow());

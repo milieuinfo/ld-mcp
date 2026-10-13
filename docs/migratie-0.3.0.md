@@ -191,3 +191,14 @@ en de samengevoegde kopie in OSLOthema-SSNSOSA-VL nog eens.
 **Golden-diff:** geen andere aantallen. De dekking telt minder shapes (439 → 170: lege node shapes
 verdwijnen; `nace2008`/`nace2025` zeggen nu "no shape applies"). De 91 meldingen in
 `waterlopen_meetplaatsen` zijn nu `QualifiedValueShape` in plaats van `minCount`.
+
+## 3.10 Generator: wat niet vertaald wordt, wordt gemeld
+
+`ShaclGenerator.translate` geeft naast de shapes de lijst van wat niet vertaald werd. De
+configuratieregel van elk rapport toont `generate-shapes (n node shapes, m property shapes, k
+restriction(s) not translated)`; het serverlog lijst ze op, en het gestructureerde resultaat
+(`Configuration.notTranslated`) ook. De README beschrijft de profiellezing (B7), de
+`minCardinality 0`-conventie als conventie van de tool (B6), de vertaaltabel met wat niet vertaald
+wordt, en claimt geen pariteit met `OwlToShaclGenerator` meer (D4).
+
+**Golden-diff:** geen (enkel de configuratieregel, die de golden suite weglaat).
