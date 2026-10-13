@@ -180,4 +180,17 @@ class ProtocolTest {
         assertTrue(report.text().contains("using the previous rules") && report.text().contains("[VOCAB] ok"),
                 report.text());
     }
+
+    @Test
+    void unexpectedLovJsonIsAToolErrorNotAProtocolError() throws IOException {
+        try (HttpFixture http = new HttpFixture()) {
+            http.body("/lov/term/search", 200, "application/json", "{\"results\": \"not an array\"}");
+            start("--lov-url", http.base() + "/lov", "--allow-private-hosts");
+            JsonObject answer = harness.call("lov_search", McpHarness.args(Map.of("query", "x")));
+            assertTrue(answer.hasKey("result"), answer.toString());
+            McpHarness.ToolResult r = harness.callTool("lov_search", McpHarness.args(Map.of("query", "x")));
+            assertTrue(r.isError(), r.text());
+            assertTrue(r.text().contains("JsonException"), r.text());
+        }
+    }
 }

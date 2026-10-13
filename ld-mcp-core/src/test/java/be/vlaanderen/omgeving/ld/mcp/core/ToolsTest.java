@@ -62,4 +62,22 @@ class ToolsTest {
         assertEquals(7, Tools.optionalInt(a, "missing", 7));
         assertNull(Tools.optionalString(a, "blank"));
     }
+
+    @Test
+    void anyRuntimeExceptionBecomesAToolError() {
+        CallToolResult r = call(tool(a -> {
+            throw new IllegalStateException("broken");
+        }), Map.of());
+        assertTrue(r.isError());
+        assertEquals("IllegalStateException: broken", text(r));
+    }
+
+    @Test
+    void anIllegalArgumentWithoutMessageStillSaysSomething() {
+        CallToolResult r = call(tool(a -> {
+            throw new NumberFormatException();
+        }), Map.of());
+        assertTrue(r.isError());
+        assertEquals("NumberFormatException", text(r));
+    }
 }

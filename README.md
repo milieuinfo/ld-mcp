@@ -231,5 +231,7 @@ takes several seconds; if only the `OntologyLoader` log line appears, the wait w
 - Hard-code nothing for a single project: ontologies, shapes, rules and prefixes come in through
   arguments.
 - Errors in the model's input: throw an `IllegalArgumentException`; `Tools.textTool` returns it
-  as a tool error (`isError`), so that the model can correct itself.
+  as a tool error (`isError`), so that the model can correct itself. Any other runtime exception
+  also becomes a tool error (`<class>: <message>`, stack trace in the log), never a JSON-RPC
+  protocol error.
 - Code, comments, Javadoc and tool output are in British English.

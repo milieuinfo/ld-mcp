@@ -9,8 +9,13 @@ import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** Helpers for declaring tools with little boilerplate. */
 public final class Tools {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Tools.class);
 
     private Tools() {
     }
@@ -52,8 +57,11 @@ public final class Tools {
     }
 
     /**
-     * Declares a tool whose handler returns text. An {@link IllegalArgumentException} thrown by the
-     * handler is reported as a tool error ({@code isError}), so that the model can correct its input.
+     * Declares a tool whose handler returns text. An exception thrown by the handler is reported
+     * as a tool error ({@code isError}), never as a protocol error: an
+     * {@link IllegalArgumentException} with its message (an error in the input, which the model can
+     * correct), any other {@link RuntimeException} as {@code <class>: <message>}, with the stack
+     * trace in the log.
      *
      * @param name        tool name
      * @param description what the tool does, shown to the model
@@ -77,13 +85,17 @@ public final class Tools {
                                 .addTextContent(handler.apply(request.arguments()))
                                 .build();
                     } catch (IllegalArgumentException e) {
-                        return CallToolResult.builder()
-                                .addTextContent(e.getMessage())
-                                .isError(true)
-                                .build();
+                        return error(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                    } catch (RuntimeException e) {
+                        LOG.error("Tool {} failed", name, e);
+                        return error(e.getClass().getSimpleName() + ": " + e.getMessage());
                     }
                 })
                 .build();
+    }
+
+    private static CallToolResult error(String text) {
+        return CallToolResult.builder().addTextContent(text).isError(true).build();
     }
 
     /**
