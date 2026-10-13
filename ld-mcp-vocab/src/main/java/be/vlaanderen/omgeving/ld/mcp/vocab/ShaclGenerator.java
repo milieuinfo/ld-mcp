@@ -49,7 +49,9 @@ public final class ShaclGenerator {
     private record ValueKind(List<Member> members, boolean union) {
     }
 
-    private record Member(String uri, boolean datatype) {
+    private enum Kind { CLASS, DATATYPE, LITERAL }
+
+    private record Member(String uri, Kind kind) {
     }
 
     private ShaclGenerator() {
@@ -112,7 +114,7 @@ public final class ShaclGenerator {
         ps.addProperty(sh(shacl, "path"), path(onProp, shacl));
 
         Set<ValueKind> kinds = new LinkedHashSet<>();
-        restrictions.forEach(r -> valueKind(r).ifPresent(kinds::add));
+        restrictions.forEach(r -> valueKind(r, ontology(onProp)).ifPresent(kinds::add));
         for (ValueKind kind : kinds) {
             if (kind.union()) {
                 List<RDFNode> shapes = new ArrayList<>();
@@ -152,28 +154,57 @@ public final class ShaclGenerator {
         return result;
     }
 
-    private static Optional<ValueKind> valueKind(Resource restriction) {
+    private static Model ontology(Resource r) {
+        return r.getModel();
+    }
+
+    private static Optional<ValueKind> valueKind(Resource restriction, Model ontology) {
         Resource v = Optional.ofNullable(restriction.getPropertyResourceValue(OWL.someValuesFrom))
                 .orElse(restriction.getPropertyResourceValue(OWL.allValuesFrom));
         if (v == null) {
             return Optional.empty();
         }
         if (v.hasProperty(OWL.unionOf)) {
-            List<Member> members = v.getPropertyResourceValue(OWL.unionOf).as(RDFList.class)
-                    .asJavaList().stream()
+            List<RDFNode> list = v.getPropertyResourceValue(OWL.unionOf).as(RDFList.class).asJavaList();
+            // owl:Thing or rdfs:Resource in a union makes it say nothing.
+            if (list.stream().anyMatch(ShaclGenerator::isAnything)) {
+                return Optional.empty();
+            }
+            List<Member> members = list.stream()
                     .filter(RDFNode::isURIResource)
-                    .map(n -> member(n.asResource()))
+                    .map(n -> member(n.asResource(), ontology))
                     .sorted(Comparator.comparing(Member::uri))
                     .toList();
             return Optional.of(new ValueKind(members, true));
         }
-        return v.isURIResource()
-                ? Optional.of(new ValueKind(List.of(member(v)), false))
-                : Optional.empty();
+        if (!v.isURIResource() || isAnything(v)) {
+            return Optional.empty();
+        }
+        return Optional.of(new ValueKind(List.of(member(v, ontology)), false));
     }
 
-    private static Member member(Resource r) {
-        return new Member(r.getURI(), r.getURI().startsWith(XSD.NS));
+    /** owl:Thing and rdfs:Resource: every value is one, so they constrain nothing. */
+    private static boolean isAnything(RDFNode n) {
+        return n.equals(OWL.Thing) || n.equals(RDFS.Resource);
+    }
+
+    private static Member member(Resource r, Model ontology) {
+        return new Member(r.getURI(), isDatatype(r, ontology) ? Kind.DATATYPE
+                : r.equals(RDFS.Literal) ? Kind.LITERAL : Kind.CLASS);
+    }
+
+    /** The datatypes of RDF that are not in the XSD namespace. */
+    private static final Set<String> RDF_DATATYPES = Set.of(RDF.langString.getURI(), RDF.HTML.getURI(),
+            RDF.xmlLiteral.getURI(), RDF.uri + "JSON", RDF.dirLangString.getURI());
+
+    /**
+     * Whether a value is a datatype: in the XSD namespace, one of RDF's datatypes, or declared
+     * {@code rdfs:Datatype} in the ontologies (e.g. {@code geo:wktLiteral}).
+     */
+    static boolean isDatatype(Resource r, Model ontology) {
+        String uri = r.getURI();
+        return uri.startsWith(XSD.NS) || RDF_DATATYPES.contains(uri)
+                || ontology != null && ontology.contains(r, RDF.type, RDFS.Datatype);
     }
 
     private static Optional<Integer> intValue(Resource restriction, Property p) {
@@ -221,7 +252,11 @@ public final class ShaclGenerator {
     }
 
     private static void classOrDatatype(Resource shape, Member m, Model shacl) {
-        shape.addProperty(sh(shacl, m.datatype() ? "datatype" : "class"), shacl.createResource(m.uri()));
+        switch (m.kind()) {
+            case DATATYPE -> shape.addProperty(sh(shacl, "datatype"), shacl.createResource(m.uri()));
+            case LITERAL -> shape.addProperty(sh(shacl, "nodeKind"), shacl.createResource(SH + "Literal"));
+            case CLASS -> shape.addProperty(sh(shacl, "class"), shacl.createResource(m.uri()));
+        }
     }
 
     private static Property sh(Model m, String local) {

@@ -1,0 +1,15 @@
+# Datatypes outside xsd:, rdfs:Literal and owl:Thing as value of a restriction (plan 3.8, review K2).
+@prefix ex:   <https://example.org/voc/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix geo:  <http://www.opengis.net/ont/geosparql#> .
+
+geo:wktLiteral a rdfs:Datatype .
+ex:Place a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:name ; owl:allValuesFrom rdf:langString ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:wkt ; owl:allValuesFrom geo:wktLiteral ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:note ; owl:allValuesFrom rdfs:Literal ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:anything ; owl:allValuesFrom owl:Thing ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:either ;
+                      owl:allValuesFrom [ owl:unionOf ( ex:Place rdfs:Resource ) ] ] .

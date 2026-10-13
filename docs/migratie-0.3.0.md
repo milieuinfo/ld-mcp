@@ -149,3 +149,13 @@ tot vocabularium-namespace. Houd voorbeelddata buiten `--ontologies`.
 
 **Golden-diff:** geen. (In OSLOthema-SSNSOSA-VL staat `generated-shapes.ttl` onder
 `src/main/resources`; zijn shapes tellen nu niet meer als termen.)
+
+## 3.8 Generator: datatypes
+
+`--generate-shapes` behandelt als datatype: alles in `xsd:`, `rdf:langString`, `rdf:HTML`,
+`rdf:XMLLiteral`, `rdf:JSON`, `rdf:dirLangString`, en alles wat in de ontologieën `a rdfs:Datatype`
+is (bv. `geo:wktLiteral`). Vroeger werd `owl:allValuesFrom rdf:langString` een `sh:class`, waardoor
+elke correcte waarde faalde. `rdfs:Literal` wordt `sh:nodeKind sh:Literal`; `owl:Thing` en
+`rdfs:Resource` (ook als lid van een `owl:unionOf`) leggen niets op.
+
+**Golden-diff:** geen.
