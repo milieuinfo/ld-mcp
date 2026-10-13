@@ -26,9 +26,9 @@ Arguments:
 | Argument | Required | Meaning |
 |---|---|---|
 | `--ontologies <path>` | yes, repeatable | File or directory (recursive) with `.ttl`, `.rdf`, `.owl`, `.nt`, `.n3`, `.jsonld` |
-| `--rules <file>` | no | Jena rules file for the inference step of `validate_file`; if absent, that step is skipped |
+| `--rules <file>` | no, repeatable | Jena rules file for the inference step of `validate_file`; several files are concatenated; if absent, that step is skipped |
 | `--generate-shapes` | no | Generate SHACL shapes for `validate_file` from the OWL restrictions in the ontologies (see below) |
-| `--shapes <file>` | no | Additional (e.g. hand-written) SHACL shapes for `validate_file`. Without `--shapes` and `--generate-shapes` the SHACL step is skipped |
+| `--shapes <file>` | no, repeatable | Additional (e.g. hand-written) SHACL shapes for `validate_file`, e.g. the rules of a kit and an application profile; several files are merged into one shapes graph. Without `--shapes` and `--generate-shapes` the SHACL step is skipped |
 | `--lov-url <url>` | no | Base URL of the LOV API for `lov_search` and `vocabulary_profile`; default `https://lov.linkeddata.es/dataset/api/v2`. A request to LOV gets up to three attempts of 10 s, with pauses of 1 and 2 s, when it fails without an answer or with 429, 502, 503 or 504: the public server often drops the TLS handshake or does not answer |
 | `--core-namespace <iri>` | no, repeatable | Namespace that `vocabulary_profile` counts as the core when it reports links to the core; default SOSA, SSN, PROV-O, QUDT schema, OWL-Time, GeoSPARQL, SKOS and DCTERMS |
 | `--alignments <file>` | no | Register of known alignment modules (e.g. `registers/alignments.ttl` of [oslo-ld-kit](https://github.com/milieuinfo/oslo-ld-kit)): each module an `owl:Ontology` with `dcterms:references` to the namespaces it connects. Read again on every call of `vocabulary_profile`; if it cannot be read, a warning is logged and the profile is built without it |
@@ -37,6 +37,10 @@ Arguments:
 | `--max-response-bytes <n>` | no | Maximum size of one response body; default 20971520 (20 MB) |
 | `--network-budget <seconds>` | no | Time one call of `vocabulary_profile` may take, default 30; `lov_search` gets half. Checks that do not fit are reported as `not checked: time budget exhausted` |
 | `--prefix-registry <file>` | no | RDF file whose prefix declarations serve as a registry of well-known namespaces, e.g. a download of [prefix.cc/popular/all.file.ttl](http://prefix.cc/popular/all.file.ttl); any syntax Jena reads will do, triples are ignored. Lets `validate_file` tell a vocabulary that exists but is not loaded from a namespace that is not known at all (see below). It is never loaded as an ontology, even if it lies under `--ontologies` (other tools that read that directory, such as a build pipeline, may not be so careful). Not bundled with the jar: the project decides which snapshot it uses. If it cannot be read, a warning is logged and validation goes on without it |
+
+The arguments are checked strictly: an unknown argument (e.g. `--shape` for `--shapes`), a value
+after a switch, a second value for an argument that takes one, or a missing path stops the server
+with a message on stderr and exit code 2.
 
 Ontologies, rules, shapes and the prefix registry are loaded at start-up. On every tool call the server compares the
 path, size and modification time of those files with the previous load; if anything has been

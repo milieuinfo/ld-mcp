@@ -220,4 +220,38 @@ class ProtocolTest {
             }
         }
     }
+
+    @Test
+    void aTypingErrorInTheArgumentsStopsTheServer() {
+        IllegalArgumentException e = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> start("--shape", "x.ttl"));
+        assertTrue(e.getMessage().startsWith("Unknown argument: --shape. Known: "), e.getMessage());
+    }
+
+    @Test
+    void severalShapesAndRulesFilesAllCount() throws IOException {
+        Path shapes1 = Files.writeString(dir.resolve("s1.ttl"), """
+                @prefix sh: <http://www.w3.org/ns/shacl#> .
+                @prefix ex: <https://example.org/voc/> .
+                [] a sh:NodeShape ; sh:targetClass ex:Thing ; sh:property [ sh:path ex:name ; sh:minCount 1 ] .
+                """);
+        Path shapes2 = Files.writeString(dir.resolve("s2.ttl"), """
+                @prefix sh: <http://www.w3.org/ns/shacl#> .
+                @prefix ex: <https://example.org/voc/> .
+                [] a sh:NodeShape ; sh:targetClass ex:Thing ; sh:property [ sh:path ex:name ; sh:maxCount 0 ] .
+                """);
+        Path rules1 = Files.writeString(dir.resolve("r1.rules"),
+                "[a: (?x rdf:type <https://example.org/voc/Thing>) -> (?x rdf:type <urn:A>)]");
+        Path rules2 = Files.writeString(dir.resolve("r2.rules"),
+                "[b: (?x rdf:type <https://example.org/voc/Thing>) -> (?x rdf:type <urn:B>)]");
+        start("--shapes", shapes1.toString(), "--shapes", shapes2.toString(),
+                "--rules", rules1.toString(), "--rules", rules2.toString());
+        Path data = Files.writeString(dir.resolve("d.ttl"), "<urn:x> a <https://example.org/voc/Thing> .");
+        String report = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString()))).text();
+        assertTrue(report.contains("[INFERENCE] 2 inferred triples"), report);
+        assertTrue(report.contains("[SHACL] 1 violation(s)"), report); // minCount from s1; s2's maxCount 0 holds
+        Files.writeString(data, "<urn:x> a <https://example.org/voc/Thing> ; <https://example.org/voc/name> \"n\" .");
+        report = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString()))).text();
+        assertTrue(report.contains("[SHACL] 1 violation(s)") && report.contains("maxCount[0]"), report);
+    }
 }

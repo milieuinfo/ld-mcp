@@ -5,12 +5,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 
 /**
- * Simple parser for {@code --key value} arguments. A key may be repeated (e.g. several
- * {@code --ontologies}); a key without a value counts as a flag.
+ * Strict parser for {@code --key value} arguments. Every key must be declared, with its kind: a
+ * typing error such as {@code --shape} for {@code --shapes} must stop the server, not silently
+ * switch a step off.
  */
 public final class ServerArgs {
+
+    /** How a key takes values. */
+    public enum Kind {
+        /** No value; present or not. */
+        FLAG,
+        /** Exactly one value, at most once. */
+        SINGLE,
+        /** One value per occurrence, as often as needed. */
+        REPEATABLE
+    }
 
     private final Map<String, List<String>> values = new LinkedHashMap<>();
 
@@ -20,12 +32,14 @@ public final class ServerArgs {
     /**
      * Parses the command-line arguments.
      *
-     * @param args the arguments as passed to {@code main}
+     * @param args  the arguments as passed to {@code main}
+     * @param known the keys (without {@code --}) and their kinds
      * @return the parsed arguments
-     * @throws IllegalArgumentException if an argument does not start with {@code --} and is not
-     *                                  the value of the preceding key
+     * @throws IllegalArgumentException if a key is unknown, a value has no key, a flag has a value,
+     *                                  a key that needs a value has none, or a single-valued key is
+     *                                  given twice
      */
-    public static ServerArgs parse(String[] args) {
+    public static ServerArgs parse(String[] args, Map<String, Kind> known) {
         ServerArgs parsed = new ServerArgs();
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -33,9 +47,28 @@ public final class ServerArgs {
                 throw new IllegalArgumentException("Unexpected argument: " + arg);
             }
             String key = arg.substring(2);
+            Kind kind = known.get(key);
+            if (kind == null) {
+                throw new IllegalArgumentException("Unknown argument: " + arg + ". Known: "
+                        + String.join(", ", new TreeSet<>(known.keySet()).stream().map(k -> "--" + k).toList()));
+            }
+            boolean hasValue = i + 1 < args.length && !args[i + 1].startsWith("--");
             List<String> list = parsed.values.computeIfAbsent(key, k -> new ArrayList<>());
-            if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
-                list.add(args[++i]);
+            switch (kind) {
+                case FLAG -> {
+                    if (hasValue) {
+                        throw new IllegalArgumentException(arg + " takes no value, but got '" + args[i + 1] + "'");
+                    }
+                }
+                case SINGLE, REPEATABLE -> {
+                    if (!hasValue) {
+                        throw new IllegalArgumentException(arg + " needs a value");
+                    }
+                    if (kind == Kind.SINGLE && !list.isEmpty()) {
+                        throw new IllegalArgumentException(arg + " may be given only once");
+                    }
+                    list.add(args[++i]);
+                }
             }
         }
         return parsed;
@@ -52,10 +85,10 @@ public final class ServerArgs {
     }
 
     /**
-     * Returns the first value of a key, for keys that are expected only once.
+     * Returns the value of a single-valued key.
      *
      * @param key the key without the leading {@code --}
-     * @return the first value given for the key, if any
+     * @return the value given for the key, if any
      */
     public Optional<String> first(String key) {
         return all(key).stream().findFirst();
@@ -80,7 +113,7 @@ public final class ServerArgs {
      * Tells whether a key was given, for keys used as switches.
      *
      * @param key the key without the leading {@code --}
-     * @return whether the key was given, with or without a value
+     * @return whether the key was given
      */
     public boolean flag(String key) {
         return values.containsKey(key);

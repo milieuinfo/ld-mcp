@@ -19,8 +19,8 @@ import be.vlaanderen.omgeving.ld.mcp.core.Tools;
  *
  * <pre>
  * java -jar ld-mcp-vocab.jar --ontologies src/main/resources [--ontologies extra.ttl]
- *     [--rules rules.rules] [--shapes shapes.ttl] [--generate-shapes]
- *     [--prefix-registry prefixes.json]
+ *     [--rules rules.rules]… [--shapes shapes.ttl]… [--generate-shapes]
+ *     [--prefix-registry prefix.cc.ttl]
  *     [--lov-url https://lov.linkeddata.es/dataset/api/v2] [--core-namespace http://…/] [--offline]
  *     [--alignments registers/alignments.ttl]
  *     [--allow-private-hosts] [--max-response-bytes 20971520] [--network-budget 30]
@@ -43,6 +43,21 @@ public final class VocabServer {
             .ofNullable(VocabServer.class.getPackage().getImplementationVersion())
             .orElse("dev");
 
+    /** The arguments the server accepts. */
+    static final Map<String, ServerArgs.Kind> ARGUMENTS = Map.ofEntries(
+            Map.entry("ontologies", ServerArgs.Kind.REPEATABLE),
+            Map.entry("rules", ServerArgs.Kind.REPEATABLE),
+            Map.entry("shapes", ServerArgs.Kind.REPEATABLE),
+            Map.entry("generate-shapes", ServerArgs.Kind.FLAG),
+            Map.entry("prefix-registry", ServerArgs.Kind.SINGLE),
+            Map.entry("lov-url", ServerArgs.Kind.SINGLE),
+            Map.entry("core-namespace", ServerArgs.Kind.REPEATABLE),
+            Map.entry("offline", ServerArgs.Kind.FLAG),
+            Map.entry("alignments", ServerArgs.Kind.SINGLE),
+            Map.entry("allow-private-hosts", ServerArgs.Kind.FLAG),
+            Map.entry("max-response-bytes", ServerArgs.Kind.SINGLE),
+            Map.entry("network-budget", ServerArgs.Kind.SINGLE));
+
     private VocabServer() {
     }
 
@@ -53,7 +68,15 @@ public final class VocabServer {
      * @throws InterruptedException if interrupted while serving
      */
     public static void main(String[] args) throws InterruptedException {
-        Setup setup = setup(args);
+        Setup setup;
+        try {
+            setup = setup(args);
+        } catch (IllegalArgumentException e) {
+            // A configuration error: say so and stop, with the exit code for usage errors.
+            System.err.println("ld-mcp-vocab: " + e.getMessage());
+            System.exit(2);
+            return;
+        }
         StdioServer.run("ld-mcp-vocab", VERSION, setup.instructions(), setup.tools());
     }
 
@@ -73,11 +96,11 @@ public final class VocabServer {
      * @return the instructions and the tools
      */
     static Setup setup(String[] args) {
-        ServerArgs parsed = ServerArgs.parse(args);
+        ServerArgs parsed = ServerArgs.parse(args, ARGUMENTS);
         List<Path> paths = parsed.required("ontologies").stream().map(Path::of).toList();
         Workspace workspace = new Workspace(paths,
-                parsed.first("rules").map(Path::of).stream().toList(),
-                parsed.first("shapes").map(Path::of).stream().toList(),
+                parsed.all("rules").stream().map(Path::of).toList(),
+                parsed.all("shapes").stream().map(Path::of).toList(),
                 parsed.flag("generate-shapes"),
                 parsed.first("prefix-registry").map(Path::of).orElse(null));
         int termCount = workspace.current().index().size();
