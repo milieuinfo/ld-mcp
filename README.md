@@ -262,38 +262,32 @@ diff in git shows only real changes. The `--out` file itself is never read as a 
 lies under `--ontologies`: otherwise its own hash would change the next export. Exit code `2` if an
 ontology file could not be read.
 
-### In CI
+### As a check before a commit or in CI
 
-A GitHub Actions job that fails on errors in the data examples and on shapes that are out of date
-(pin the version; the checksum is published next to each jar):
+A shell script that fails on errors in the data examples and on generated shapes that are out of
+date. It runs locally (e.g. from a pre-commit hook) and in any CI system; pin the version, and check
+the checksum that is published next to each jar:
 
-```yaml
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    env:
-      LD_MCP_VERSION: v0.4.0
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
-      - name: Download ld-mcp-vocab
-        run: |
-          base=https://github.com/milieuinfo/ld-mcp/releases/download/$LD_MCP_VERSION
-          curl -sSfL -o ld-mcp-vocab.jar $base/ld-mcp-vocab.jar
-          curl -sSfL -o ld-mcp-vocab.jar.sha256 $base/ld-mcp-vocab.jar.sha256
-          sha256sum -c ld-mcp-vocab.jar.sha256
-      - name: Validate the examples
-        run: >
-          java -jar ld-mcp-vocab.jar validate
-          --ontologies src/main/resources --rules path/to/rules.rules --generate-shapes
-          --shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl --prefix-registry path/to/prefix.cc.ttl
-          --extensions ttl src/main/input
-      - name: Generated shapes are up to date
-        run: |
-          java -jar ld-mcp-vocab.jar generate-shapes --ontologies src/main/resources \
-              --prefix-registry path/to/prefix.cc.ttl --out /tmp/shapes.ttl
-          diff <(grep -v '^#' src/main/resources/generated-shapes.ttl) <(grep -v '^#' /tmp/shapes.ttl)
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+version=v0.4.0
+base=https://github.com/milieuinfo/ld-mcp/releases/download/$version
+mkdir -p tools
+if ! (cd tools && sha256sum -c --status ld-mcp-vocab.jar.sha256 2>/dev/null); then
+    curl -sSfL -o tools/ld-mcp-vocab.jar "$base/ld-mcp-vocab.jar"
+    curl -sSfL -o tools/ld-mcp-vocab.jar.sha256 "$base/ld-mcp-vocab.jar.sha256"
+    (cd tools && sha256sum -c ld-mcp-vocab.jar.sha256)
+fi
+jar=tools/ld-mcp-vocab.jar
+
+java -jar $jar validate --ontologies src/main/resources --rules path/to/rules.rules \
+    --generate-shapes --shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl \
+    --prefix-registry path/to/prefix.cc.ttl --extensions ttl src/main/input
+
+java -jar $jar generate-shapes --ontologies src/main/resources \
+    --prefix-registry path/to/prefix.cc.ttl --out /tmp/shapes.ttl
+diff <(grep -v '^#' src/main/resources/generated-shapes.ttl) <(grep -v '^#' /tmp/shapes.ttl)
 ```
 
 The diff leaves out the comment header: it names the version of the jar and the hashes of the
@@ -322,14 +316,17 @@ mvn package
 # → ld-mcp-vocab/target/ld-mcp-vocab.jar
 ```
 
-**Releasing:** on an up-to-date `main` without uncommitted changes, run
-`scripts/tag-release.sh <version>` (e.g. `scripts/tag-release.sh 0.2.2`; `--dry-run` only checks).
-The script refuses another branch, uncommitted changes, a `main` that differs from `origin/main`
-and an existing tag; it only creates and pushes the tag `v<version>`. The workflow
-`.github/workflows/release.yml` then sets that version, builds and tests from the tag, and creates
-a GitHub Release with `ld-mcp-vocab.jar` and `ld-mcp-vocab.jar.sha256`. Nothing is built from a
-working tree. `.github/workflows/build.yml` builds and tests every push to `main` and every pull
-request.
+**Releasing** (there is no GitHub Actions for the organisation; releases are made locally): on an
+up-to-date `main` without uncommitted changes, run `scripts/tag-release.sh <version>`, e.g.
+`scripts/tag-release.sh 0.4.0`. The script refuses another branch, uncommitted changes, a `main`
+that differs from `origin/main`, and an existing tag or release. It builds and tests the commit in a
+fresh git worktree (never the working tree, so nothing uncommitted can end up in the jar), with the
+version set from the argument, and checks that the jar reports it. Only if everything is green does
+it create and push the tag `v<version>` and create the GitHub release with `ld-mcp-vocab.jar` and
+`ld-mcp-vocab.jar.sha256` (`gh`, logged in). `--dry-run` does the checks, the build and the tests,
+and stops before tagging. If the release cannot be created after the tag was pushed, the script
+keeps the files and prints the `gh release create` command to retry with. Afterwards, raise the
+poms to the next development version (`mvn versions:set -DnewVersion=<next>-SNAPSHOT`).
 
 ## Use in another project
 

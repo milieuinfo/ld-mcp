@@ -96,7 +96,7 @@
           <artifactId>maven-shade-plugin</artifactId>
           <version>3.6.0</version>
         </plugin>
-        <!-- Sets the version from the tag in the release workflow -->
+        <!-- Sets the release version in scripts/tag-release.sh -->
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>versions-maven-plugin</artifactId>
