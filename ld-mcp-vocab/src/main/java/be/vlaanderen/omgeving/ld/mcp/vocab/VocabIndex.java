@@ -237,7 +237,21 @@ public final class VocabIndex {
      *                                  name nor an IRI
      */
     public String lookup(String term) {
-        String iri = expand(term);
+        return describe(term, expand(term));
+    }
+
+    /**
+     * Describes one term given by its full IRI, without reading it as a prefixed name (an IRI such
+     * as {@code urn:x:y} or {@code mailto:a@b} would otherwise be taken for one).
+     *
+     * @param iri the full IRI
+     * @return the description, or a "Not found" message with suggestions
+     */
+    public String lookupIri(String iri) {
+        return describe(iri, iri);
+    }
+
+    private String describe(String term, String iri) {
         Resource r = model.createResource(iri);
         if (!contains(iri)) {
             if (BuiltIns.isBuiltIn(iri) && !model.listStatements(r, null, (RDFNode) null).hasNext()) {

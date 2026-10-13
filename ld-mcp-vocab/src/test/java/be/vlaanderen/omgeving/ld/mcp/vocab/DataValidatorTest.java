@@ -574,5 +574,12 @@ class DataValidatorTest {
                 """).validate(data("ex:t1 a voc:Thing . <https://example.org/shapes/s1> a voc:Thing ."));
         assertTrue(out.contains("[VOCAB] ok"), out);
     }
+
+    @Test
+    void iriSchemesWithoutSlashesDoNotBreakTheSuggestions() throws IOException {
+        String out = validator(false).validate(data("<urn:a> <urn:x:p> <mailto:a@b.example> ; <tag:x,2026:q> 1 ."));
+        assertTrue(out.contains("Unknown property: urn:x:p"), out);
+        assertTrue(out.contains("Unknown property: tag:x,2026:q"), out);
+    }
 }
 

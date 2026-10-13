@@ -289,7 +289,7 @@ public final class DataValidator {
                 similarDatatypes(iri).ifPresent(hints::add);
             } else if (!role && (hint == null || !hint.termExists())) {
                 // Suggestions from lookup_term: everything after the "Not found" line.
-                index.lookup(iri).lines().skip(1).forEach(hints::add);
+                index.lookupIri(iri).lines().skip(1).forEach(hints::add);
             }
             // Established only where the namespace is loaded: there the term certainly does not exist.
             Certainty certainty = code.startsWith("minted") || code.endsWith("-used-as-class")
