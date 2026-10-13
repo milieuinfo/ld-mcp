@@ -240,3 +240,12 @@ zoekt ook in `skos:altLabel`. `vocabulary_profile` telt SKOS-mappings (`exactMat
 unies) tot de eerste benoemde termen.
 
 **Golden-diff:** geen.
+
+## 3.14 Neutrale tooluitvoer
+
+`lov_search` en `vocabulary_profile` verwijzen niet meer naar "R17 of oslo-ld-kit", maar naar "your
+own criteria"; het profiel vermeldt welke core actief is (de standaardset, of de
+`--core-namespace`-waarden) en hoe je die wijzigt. De kit kan in zijn gids blijven zeggen dat R17
+het kader is.
+
+**Golden-diff:** geen.

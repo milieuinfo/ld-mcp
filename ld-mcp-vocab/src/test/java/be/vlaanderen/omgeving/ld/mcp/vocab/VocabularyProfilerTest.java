@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.jena.rdf.model.Model;
@@ -288,6 +289,17 @@ class VocabularyProfilerTest {
         String out = new VocabularyProfiler(null, none, VocabularyProfiler.DEFAULT_CORE)
                 .profile("https://example.org/voc#", null, null, loaded);
         assertTrue(out.contains("loaded ontologies: 3 axiom(s) or SKOS mapping(s)"), out);
+    }
+
+    @Test
+    void theProfileNamesTheActiveCoreAndNoProjectRules() {
+        Fetcher none = (uri, accept) -> new Fetcher.Response(404, "text/html", "");
+        String preset = new VocabularyProfiler(null, none, VocabularyProfiler.DEFAULT_CORE).profile("https://example.org/v#", null);
+        assertTrue(preset.contains("Core: the default preset (SOSA, SSN, PROV-O, QUDT, OWL-Time, GeoSPARQL, SKOS, DCTERMS); "
+                + "set --core-namespace to change it."), preset);
+        assertFalse(preset.contains("R17") || preset.contains("oslo-ld-kit"), preset);
+        String own = new VocabularyProfiler(null, none, List.of("http://www.w3.org/ns/dcat#")).profile("https://example.org/v#", null);
+        assertTrue(own.contains("Core: http://www.w3.org/ns/dcat# (--core-namespace)."), own);
     }
 }
 

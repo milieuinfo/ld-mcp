@@ -23,7 +23,6 @@ class VocabConfigTest {
         assertNull(c.prefixRegistry());
         assertEquals(LovClient.DEFAULT_BASE_URL, c.lovUrl());
         assertEquals(VocabularyProfiler.DEFAULT_CORE, c.core());
-        assertTrue(c.coreIsDefault());
         assertEquals(GuardedFetcher.DEFAULT_MAX_BYTES, c.maxResponseBytes());
         assertEquals(Duration.ofSeconds(30), c.networkBudget());
         assertEquals(Path.of(""), c.dataRoot());
@@ -38,7 +37,6 @@ class VocabConfigTest {
         assertEquals(2, c.ontologies().size());
         assertEquals(List.of(Path.of("r1"), Path.of("r2")), c.rules());
         assertEquals(List.of("urn:c#"), c.core());
-        assertFalse(c.coreIsDefault());
         assertTrue(c.offline() && c.allowPrivateHosts() && c.generateShapes());
         assertEquals(10, c.maxResponseBytes());
         assertEquals(Duration.ofSeconds(5), c.networkBudget());

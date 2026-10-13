@@ -44,7 +44,7 @@ import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
  * about it, whether its namespace and a sample term dereference to RDF, and what the RDF itself
  * shows (version, licence, labels and definitions, links to core vocabularies, axioms about other
  * vocabularies' terms, SKOS relations between classes, deprecated terms). It reports facts, not a
- * verdict: the assessment belongs to the modeller (e.g. rule R17 of oslo-ld-kit).
+ * verdict: the assessment belongs to the modeller, against the project's own criteria.
  */
 public final class VocabularyProfiler {
 
@@ -89,6 +89,7 @@ public final class VocabularyProfiler {
     private final Fetcher fetcher;
     private final List<String> core;
     private final Duration budget;
+    private final boolean coreIsDefault;
 
     /**
      * Creates a profiler.
@@ -114,6 +115,7 @@ public final class VocabularyProfiler {
         this.lov = lov;
         this.fetcher = fetcher;
         this.core = List.copyOf(core);
+        this.coreIsDefault = this.core.equals(DEFAULT_CORE);
         this.budget = budget;
     }
 
@@ -149,7 +151,11 @@ public final class VocabularyProfiler {
         Deadline deadline = Deadline.after(budget);
         StringBuilder sb = new StringBuilder();
         sb.append("Fact sheet for '").append(vocab).append("'. Facts only; assess them yourself "
-                + "(e.g. against R17 of oslo-ld-kit). Live checks outweigh LOV, whose records can lag behind.\n\n");
+                + "against your project's criteria. Live checks outweigh LOV, whose records can lag behind.\n");
+        sb.append(coreIsDefault
+                ? "Core: the default preset (SOSA, SSN, PROV-O, QUDT, OWL-Time, GeoSPARQL, SKOS, DCTERMS); "
+                        + "set --core-namespace to change it.\n\n"
+                : "Core: " + String.join(", ", core) + " (--core-namespace).\n\n");
 
         // LOV is only one source: when it cannot be reached, the live checks still run for an IRI.
         Optional<JsonObject> info = Optional.empty();

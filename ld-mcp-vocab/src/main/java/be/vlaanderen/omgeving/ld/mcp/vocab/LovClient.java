@@ -120,7 +120,7 @@ public final class LovClient {
                 .append(Untrusted.literal(query)).append("'")
                 .append(type == null ? "" : " (" + type + ")").append(".\n")
                 .append("Note: LOV ranks by text match, not by suitability. A hit is a candidate to assess "
-                        + "(e.g. against R17 of oslo-ld-kit), never a recommendation.\n");
+                        + "against your own criteria for choosing vocabularies, never a recommendation.\n");
 
         StringBuilder hits = new StringBuilder();
         JsonArray buckets = path(json, "aggregations", "vocabs", "buckets").map(JsonValue::getAsArray).orElse(null);

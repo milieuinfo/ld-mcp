@@ -18,7 +18,6 @@ import be.vlaanderen.omgeving.ld.mcp.core.ServerArgs;
  * @param prefixRegistry    the prefix registry, or {@code null}
  * @param lovUrl            base URL of the LOV API
  * @param core              namespaces that {@code vocabulary_profile} counts as the core
- * @param coreIsDefault     whether {@code core} is the built-in preset (no {@code --core-namespace})
  * @param offline           whether the server makes no network requests
  * @param alignments        the alignment register, or {@code null}
  * @param allowPrivateHosts whether hosts with a private address may be fetched
@@ -27,7 +26,7 @@ import be.vlaanderen.omgeving.ld.mcp.core.ServerArgs;
  * @param dataRoot          the directory {@code validate_file} may read from
  */
 public record VocabConfig(List<Path> ontologies, List<Path> rules, List<Path> shapes, boolean generateShapes,
-                          Path prefixRegistry, String lovUrl, List<String> core, boolean coreIsDefault,
+                          Path prefixRegistry, String lovUrl, List<String> core,
                           boolean offline, Path alignments, boolean allowPrivateHosts, long maxResponseBytes,
                           Duration networkBudget, Path dataRoot) {
 
@@ -75,7 +74,6 @@ public record VocabConfig(List<Path> ontologies, List<Path> rules, List<Path> sh
                 parsed.first("prefix-registry").map(Path::of).orElse(null),
                 parsed.first("lov-url").orElse(LovClient.DEFAULT_BASE_URL),
                 core.isEmpty() ? VocabularyProfiler.DEFAULT_CORE : core,
-                core.isEmpty(),
                 parsed.flag("offline"),
                 parsed.first("alignments").map(Path::of).orElse(null),
                 parsed.flag("allow-private-hosts"),
