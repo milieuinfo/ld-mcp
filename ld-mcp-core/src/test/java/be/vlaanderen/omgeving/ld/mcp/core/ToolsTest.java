@@ -80,4 +80,28 @@ class ToolsTest {
         assertTrue(r.isError());
         assertEquals("NumberFormatException", text(r));
     }
+
+    @Test
+    void boundedIntegersAreCheckedAndDeclared() {
+        Map<String, Object> a = new java.util.HashMap<>(Map.of("ok", 5, "low", -1, "high", 201, "frac", 2.5,
+                "whole", 3.0, "text", "7"));
+        assertEquals(5, Tools.optionalInt(a, "ok", 25, 1, 200));
+        assertEquals(3, Tools.optionalInt(a, "whole", 25, 1, 200));
+        assertEquals(25, Tools.optionalInt(a, "missing", 25, 1, 200));
+        for (String key : List.of("low", "high", "frac", "text")) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> Tools.optionalInt(a, key, 25, 1, 200));
+            assertTrue(e.getMessage().startsWith(key + " must be a whole number between 1 and 200, not "), e.getMessage());
+        }
+        assertEquals(Map.of("type", "integer", "description", "n", "minimum", 1, "maximum", 9), Tools.integer("n", 1, 9));
+    }
+
+    @Test
+    void annotationsMarkReadOnlyTools() {
+        SyncToolSpecification t = Tools.textTool("t", "d", Tools.objectSchema(Map.of(), List.of()),
+                Tools.readOnly(true), a -> "x");
+        assertTrue(t.tool().annotations().readOnlyHint());
+        assertTrue(t.tool().annotations().openWorldHint());
+        assertFalse(t.tool().annotations().destructiveHint());
+    }
 }

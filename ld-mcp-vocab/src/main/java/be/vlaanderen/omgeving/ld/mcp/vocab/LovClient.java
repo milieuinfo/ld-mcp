@@ -33,6 +33,9 @@ public final class LovClient {
     /** Default pause before the second attempt; it doubles before each further attempt. */
     public static final Duration DEFAULT_PAUSE = Duration.ofSeconds(1);
 
+    /** The largest number of hits asked from LOV in one search. */
+    public static final int MAX_PAGE_SIZE = 50;
+
     private final String baseUrl;
     private final Fetcher fetcher;
     private final int attempts;
@@ -100,7 +103,7 @@ public final class LovClient {
         }
         String url = baseUrl + "/term/search?q=" + encode(query)
                 + (type == null ? "" : "&type=" + type)
-                + "&page_size=" + Math.max(1, limit);
+                + "&page_size=" + Math.clamp(limit, 1, MAX_PAGE_SIZE);
         JsonObject json = getJson(url, deadline);
 
         StringBuilder sb = new StringBuilder();

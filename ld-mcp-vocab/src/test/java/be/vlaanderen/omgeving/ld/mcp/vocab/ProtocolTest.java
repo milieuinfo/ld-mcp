@@ -193,4 +193,31 @@ class ProtocolTest {
             assertTrue(r.text().contains("JsonException"), r.text());
         }
     }
+
+    @Test
+    void anOutOfRangeLimitIsAReadableToolError() throws IOException {
+        McpHarness.ToolResult r = start().callTool("search_terms", McpHarness.args(Map.of("query", "thing", "limit", -1)));
+        // The SDK checks the schema (minimum/maximum) before the handler does.
+        assertTrue(r.isError());
+        assertTrue(r.text().contains("/limit: must have a minimum value of 1"), r.text());
+        assertTrue(harness.callTool("lov_search", McpHarness.args(Map.of("query", "x", "limit", 500))).isError());
+    }
+
+    @Test
+    void toolsDeclareAnnotationsAndBounds() throws IOException {
+        JsonObject answer = start().listTools();
+        for (JsonValue t : answer.get("result").getAsObject().get("tools").getAsArray()) {
+            JsonObject tool = t.getAsObject();
+            String name = tool.get("name").getAsString().value();
+            JsonObject ann = tool.get("annotations").getAsObject();
+            assertTrue(ann.get("readOnlyHint").getAsBoolean().value(), name);
+            boolean network = name.equals("lov_search") || name.equals("vocabulary_profile");
+            assertEquals(network, ann.get("openWorldHint").getAsBoolean().value(), name);
+            if (name.equals("search_terms")) {
+                JsonObject limit = tool.get("inputSchema").getAsObject().get("properties").getAsObject()
+                        .get("limit").getAsObject();
+                assertEquals(200, limit.get("maximum").getAsNumber().value().intValue());
+            }
+        }
+    }
 }

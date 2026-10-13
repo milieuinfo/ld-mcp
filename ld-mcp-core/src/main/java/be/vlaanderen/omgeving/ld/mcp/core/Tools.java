@@ -8,6 +8,7 @@ import java.util.function.Function;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.modelcontextprotocol.spec.McpSchema.ToolAnnotations;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,34 @@ public final class Tools {
      */
     public static Map<String, Object> integer(String description) {
         return Map.of("type", "integer", "description", description);
+    }
+
+    /**
+     * Declares an integer property with bounds for an input schema.
+     *
+     * @param description what the property means, shown to the model
+     * @param min         the smallest allowed value
+     * @param max         the largest allowed value
+     * @return a JSON Schema property of type integer with {@code minimum} and {@code maximum}
+     */
+    public static Map<String, Object> integer(String description, int min, int max) {
+        return Map.of("type", "integer", "description", description, "minimum", min, "maximum", max);
+    }
+
+    /**
+     * Annotations for a tool that only reads.
+     *
+     * @param openWorld whether the tool talks to the outside world (the network)
+     * @return {@code readOnlyHint: true}, {@code destructiveHint: false}, {@code idempotentHint:
+     *         true} and the given {@code openWorldHint}
+     */
+    public static ToolAnnotations readOnly(boolean openWorld) {
+        return ToolAnnotations.builder()
+                .readOnlyHint(true)
+                .destructiveHint(false)
+                .idempotentHint(true)
+                .openWorldHint(openWorld)
+                .build();
     }
 
     /**
@@ -72,10 +101,29 @@ public final class Tools {
     public static SyncToolSpecification textTool(String name, String description,
                                                  Map<String, Object> inputSchema,
                                                  Function<Map<String, Object>, String> handler) {
+        return textTool(name, description, inputSchema, null, handler);
+    }
+
+    /**
+     * Declares a tool whose handler returns text, with annotations (hints for the client); see
+     * {@link #textTool(String, String, Map, Function)} for the error handling.
+     *
+     * @param name        tool name
+     * @param description what the tool does, shown to the model
+     * @param inputSchema JSON Schema of the arguments, e.g. from {@link #objectSchema}
+     * @param annotations hints such as {@link #readOnly(boolean)}, or {@code null}
+     * @param handler     maps the arguments to the text result
+     * @return the tool specification
+     */
+    public static SyncToolSpecification textTool(String name, String description,
+                                                 Map<String, Object> inputSchema,
+                                                 ToolAnnotations annotations,
+                                                 Function<Map<String, Object>, String> handler) {
         Tool tool = Tool.builder()
                 .name(name)
                 .description(description)
                 .inputSchema(inputSchema)
+                .annotations(annotations)
                 .build();
         return SyncToolSpecification.builder()
                 .tool(tool)
@@ -125,6 +173,34 @@ public final class Tools {
     public static int optionalInt(Map<String, Object> args, String key, int fallback) {
         Object value = args == null ? null : args.get(key);
         return value instanceof Number n ? n.intValue() : fallback;
+    }
+
+    /**
+     * Reads an optional integer argument with bounds.
+     *
+     * @param args     the tool arguments (may be {@code null})
+     * @param key      the argument name
+     * @param fallback the value to use when the argument is missing
+     * @param min      the smallest allowed value
+     * @param max      the largest allowed value
+     * @return the argument as an int, or {@code fallback}
+     * @throws IllegalArgumentException if the argument is not a whole number between {@code min}
+     *                                  and {@code max}
+     */
+    public static int optionalInt(Map<String, Object> args, String key, int fallback, int min, int max) {
+        Object value = args == null ? null : args.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        String range = key + " must be a whole number between " + min + " and " + max;
+        if (!(value instanceof Number n)) {
+            throw new IllegalArgumentException(range + ", not '" + value + "'");
+        }
+        double d = n.doubleValue();
+        if (d != Math.rint(d) || d < min || d > max) {
+            throw new IllegalArgumentException(range + ", not " + value);
+        }
+        return (int) d;
     }
 
     /**

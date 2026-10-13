@@ -109,29 +109,31 @@ public final class VocabServer {
                         + "choose for you.",
                 List.of(
                         Tools.textTool("lookup_term",
-                                "Describes one class or property: type, label, definition, "
-                                        + "subClassOf/subPropertyOf, domain, range, inverseOf, subterms. "
-                                        + "If the term does not exist, suggestions follow (e.g. the same "
-                                        + "local name in another namespace).",
+                                "Describes one class, property, individual or concept (e.g. a unit): type, "
+                                        + "label, definition, subClassOf/subPropertyOf, domain, range, inverseOf, "
+                                        + "SKOS mappings, subterms. If the term does not exist, suggestions follow "
+                                        + "(e.g. the same local name in another loaded namespace).",
                                 Tools.objectSchema(
                                         Map.of("term", Tools.string(
                                                 "Prefixed name (sosa:Observation) or full IRI")),
                                         List.of("term")),
+                                Tools.readOnly(false),
                                 a -> {
                                     Workspace.State state = workspace.current();
                                     return state.withProblems(state.index().lookup(Tools.requiredString(a, "term")));
                                 }),
                         Tools.textTool("search_terms",
-                                "Finds classes and properties whose local name or label contains the "
-                                        + "query (case-insensitive).",
+                                "Finds classes, properties, individuals and concepts whose local name or "
+                                        + "label contains the query (case-insensitive); exact matches first.",
                                 Tools.objectSchema(
                                         Map.of("query", Tools.string("Text to search for, e.g. 'sample'"),
-                                                "limit", Tools.integer("Maximum number of results (default 25)")),
+                                                "limit", Tools.integer("Maximum number of results (default 25)", 1, 200)),
                                         List.of("query")),
+                                Tools.readOnly(false),
                                 a -> {
                                     Workspace.State state = workspace.current();
                                     return state.withProblems(state.index().search(Tools.requiredString(a, "query"),
-                                            Tools.optionalInt(a, "limit", 25)));
+                                            Tools.optionalInt(a, "limit", 25, 1, 200)));
                                 }),
                         Tools.textTool("validate_file",
                                 "Validates an RDF data file (.ttl, …): unknown properties/classes "
@@ -143,6 +145,7 @@ public final class VocabServer {
                                         Map.of("path", Tools.string(
                                                 "Path to the file, relative to the project root")),
                                         List.of("path")),
+                                Tools.readOnly(false),
                                 a -> {
                                     Workspace.State state = workspace.current();
                                     return state.withProblems(state.validator().validate(Tools.requiredString(a, "path")));
@@ -154,10 +157,11 @@ public final class VocabServer {
                                 Tools.objectSchema(
                                         Map.of("query", Tools.string("Text to search for, e.g. 'Sample'"),
                                                 "type", Tools.string("'class' or 'property'; omit for both"),
-                                                "limit", Tools.integer("Maximum number of hits (default 15)")),
+                                                "limit", Tools.integer("Maximum number of hits (default 15)", 1, 50)),
                                         List.of("query")),
+                                Tools.readOnly(true),
                                 online(offline, a -> lov.searchTerms(Tools.requiredString(a, "query"),
-                                        Tools.optionalString(a, "type"), Tools.optionalInt(a, "limit", 15),
+                                        Tools.optionalString(a, "type"), Tools.optionalInt(a, "limit", 15, 1, 50),
                                         iri -> workspace.current().index().contains(iri),
                                         Deadline.after(searchBudget)))),
                         Tools.textTool("vocabulary_profile",
@@ -174,6 +178,7 @@ public final class VocabServer {
                                                 "term", Tools.string(
                                                         "Optional term IRI to dereference as a sample")),
                                         List.of("vocabulary")),
+                                Tools.readOnly(true),
                                 online(offline, a -> profiler.profile(Tools.requiredString(a, "vocabulary"),
                                         Tools.optionalString(a, "term"), register(alignments),
                                         workspace.current().index().model())))));

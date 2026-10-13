@@ -177,7 +177,7 @@ public final class McpHarness implements AutoCloseable {
                 o.put(k, String.valueOf(v));
             }
         });
-        return o.toString();
+        return JSON.toStringFlat(o);
     }
 
     /** An in-memory pipe that, unlike {@link java.io.PipedInputStream}, does not care about threads. */

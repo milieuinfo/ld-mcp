@@ -185,4 +185,17 @@ class LovClientTest {
         assertTrue(e.getMessage().contains("refused: test"), e.getMessage());
         assertEquals(1, calls.get());
     }
+
+    @Test
+    void asksAtMostFiftyHits() {
+        List<String> urls = new java.util.ArrayList<>();
+        LovClient lov = new LovClient("https://lov.example/api", (uri, accept) -> {
+            urls.add(uri.toString());
+            return new Fetcher.Response(200, "application/json", "{\"total_results\": 0, \"results\": []}");
+        });
+        lov.searchTerms("x", null, 1000, iri -> false);
+        lov.searchTerms("x", null, 0, iri -> false);
+        assertTrue(urls.get(0).endsWith("&page_size=50"), urls.get(0));
+        assertTrue(urls.get(1).endsWith("&page_size=1"), urls.get(1));
+    }
 }

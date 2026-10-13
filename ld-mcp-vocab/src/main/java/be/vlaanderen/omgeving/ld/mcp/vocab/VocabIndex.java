@@ -148,6 +148,9 @@ public final class VocabIndex {
      * @return the number of hits and the first {@code limit} terms with their type and label
      */
     public String search(String query, int limit) {
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be at least 1, not " + limit);
+        }
         String q = query.toLowerCase(Locale.ROOT);
         List<Resource> hits = terms.stream()
                 .filter(t -> matches(t, q))
