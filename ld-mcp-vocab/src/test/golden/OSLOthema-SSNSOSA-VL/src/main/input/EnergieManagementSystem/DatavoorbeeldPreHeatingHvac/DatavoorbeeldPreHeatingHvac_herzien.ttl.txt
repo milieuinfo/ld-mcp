@@ -1,10 +1,9 @@
-Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldPreHeatingHvac/DatavoorbeeldPreHeatingHvac_herzien.ttl (228 triples)
+Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldPreHeatingHvac/DatavoorbeeldPreHeatingHvac_herzien.ttl (245 triples)
 
 [VOCAB] ok
 
-[INFERENCE] 468 inferred triples
+[INFERENCE] 499 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (31 of 172 shapes applied to 32 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
-- [warning] exec:bezettingsvoorspelling_001  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
+[SHACL] conforms (31 of 172 shapes applied to 34 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

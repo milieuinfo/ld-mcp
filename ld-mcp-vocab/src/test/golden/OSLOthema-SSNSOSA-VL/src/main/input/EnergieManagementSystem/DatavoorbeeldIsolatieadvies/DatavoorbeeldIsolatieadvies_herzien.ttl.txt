@@ -1,10 +1,9 @@
-Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldIsolatieadvies/DatavoorbeeldIsolatieadvies_herzien.ttl (102 triples)
+Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldIsolatieadvies/DatavoorbeeldIsolatieadvies_herzien.ttl (113 triples)
 
 [VOCAB] ok
 
-[INFERENCE] 265 inferred triples
+[INFERENCE] 273 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (27 of 172 shapes applied to 20 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
-- [warning] exec:meting-001  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
+[SHACL] conforms (27 of 172 shapes applied to 21 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
