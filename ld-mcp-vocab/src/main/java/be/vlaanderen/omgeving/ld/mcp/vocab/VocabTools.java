@@ -82,7 +82,7 @@ final class VocabTools {
                             return state.withProblems(state.index().search(Tools.requiredString(a, "query"),
                                     Tools.optionalInt(a, "limit", 25, 1, 200)));
                         }),
-                Tools.textTool("validate_file",
+                Tools.structuredTool("validate_file",
                         "Validates an RDF data file (.ttl, …) in four steps. VOCAB: unknown properties, "
                                 + "classes and other IRIs in loaded vocabulary namespaces, and resources the data "
                                 + "mints in such a namespace; each finding marked error, suspect or hint, with "
@@ -97,11 +97,14 @@ final class VocabTools {
                                         "Path to the file, relative to the project root (--data-root); "
                                                 + "files outside it are refused")),
                                 List.of("path")),
+                        ResultJson.schema(),
                         Tools.readOnly(false),
                         a -> {
                             Workspace.State state = workspace.current();
                             String given = Tools.requiredString(a, "path");
-                            return state.withProblems(state.validator().validate(dataRoot.resolve(given), given));
+                            ValidationResult result = state.validator().check(dataRoot.resolve(given), given);
+                            return new Tools.Structured(state.withProblems(TextReport.render(result)),
+                                    ResultJson.toMap(result));
                         }),
                 Tools.textTool("lov_search",
                         "Searches Linked Open Vocabularies (LOV) for candidate terms and marks "

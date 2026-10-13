@@ -314,5 +314,34 @@ class ProtocolTest {
             assertTrue(out.contains("register: none configured"), out);
         }
     }
+
+    @Test
+    void validateFileAlsoReturnsTheResultAsData() throws IOException {
+        start();
+        Files.writeString(dir.resolve("d.ttl"), "<urn:a> a <https://example.org/voc/Nope> .");
+        McpHarness.ToolResult r = harness.callTool("validate_file", McpHarness.args(Map.of("path", "d.ttl")));
+        JsonObject structured = r.result().get("structuredContent").getAsObject();
+        assertEquals("1.0", structured.get("schemaVersion").getAsString().value());
+        assertEquals(1, structured.get("summary").getAsObject().get("error").getAsNumber().value().intValue());
+        JsonObject finding = structured.get("steps").getAsArray().get(0).getAsObject().get("findings").getAsArray()
+                .get(0).getAsObject();
+        assertEquals("unknown-class", finding.get("code").getAsString().value());
+        assertEquals("https://example.org/voc/Nope", finding.get("focusIri").getAsString().value());
+        JsonObject tool = harness.listTools().get("result").getAsObject().get("tools").getAsArray().stream()
+                .map(JsonValue::getAsObject).filter(t -> t.get("name").getAsString().value().equals("validate_file"))
+                .findFirst().orElseThrow();
+        assertTrue(tool.hasKey("outputSchema"), tool.toString());
+    }
+
+    @Test
+    void theSdkRefusesStructuredContentThatDoesNotMatchTheSchema() {
+        var tool = be.vlaanderen.omgeving.ld.mcp.core.Tools.structuredTool("t", "test",
+                be.vlaanderen.omgeving.ld.mcp.core.Tools.objectSchema(Map.of(), List.of()),
+                Map.of("type", "object", "required", List.of("x"), "properties", Map.of("x", Map.of("type", "string"))),
+                null, a -> new be.vlaanderen.omgeving.ld.mcp.core.Tools.Structured("text", Map.of("y", 1)));
+        harness = new McpHarness("test", List.of(tool));
+        McpHarness.ToolResult r = harness.callTool("t", "{}");
+        assertTrue(r.isError(), r.text());
+    }
 }
 

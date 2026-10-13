@@ -142,6 +142,60 @@ public final class Tools {
                 .build();
     }
 
+    /**
+     * The output of a tool with structured content: the text for the model, and the same result
+     * as data.
+     *
+     * @param text       the text content
+     * @param structured the structured content (maps, lists, strings, numbers, booleans)
+     */
+    public record Structured(String text, Map<String, Object> structured) {
+    }
+
+    /**
+     * Declares a tool that returns text and structured content, with an output schema that the
+     * structured content conforms to. Errors are handled as in
+     * {@link #textTool(String, String, Map, Function)}; an error result has no structured content.
+     *
+     * @param name         tool name
+     * @param description  what the tool does, shown to the model
+     * @param inputSchema  JSON Schema of the arguments
+     * @param outputSchema JSON Schema of the structured content
+     * @param annotations  hints such as {@link #readOnly(boolean)}, or {@code null}
+     * @param handler      maps the arguments to the result
+     * @return the tool specification
+     */
+    public static SyncToolSpecification structuredTool(String name, String description,
+                                                       Map<String, Object> inputSchema,
+                                                       Map<String, Object> outputSchema,
+                                                       ToolAnnotations annotations,
+                                                       Function<Map<String, Object>, Structured> handler) {
+        Tool tool = Tool.builder()
+                .name(name)
+                .description(description)
+                .inputSchema(inputSchema)
+                .outputSchema(outputSchema)
+                .annotations(annotations)
+                .build();
+        return SyncToolSpecification.builder()
+                .tool(tool)
+                .callHandler((exchange, request) -> {
+                    try {
+                        Structured out = handler.apply(request.arguments());
+                        return CallToolResult.builder()
+                                .addTextContent(out.text())
+                                .structuredContent(out.structured())
+                                .build();
+                    } catch (IllegalArgumentException e) {
+                        return error(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                    } catch (RuntimeException e) {
+                        LOG.error("Tool {} failed", name, e);
+                        return error(e.getClass().getSimpleName() + ": " + e.getMessage());
+                    }
+                })
+                .build();
+    }
+
     private static CallToolResult error(String text) {
         return CallToolResult.builder().addTextContent(text).isError(true).build();
     }

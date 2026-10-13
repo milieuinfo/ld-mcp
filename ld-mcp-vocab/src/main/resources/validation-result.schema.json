@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:x-ld-mcp:schema:validation-result:1.0",
+  "title": "ld-mcp-vocab validation result",
+  "description": "The result of validating one RDF data file (validate_file, or one entry of 'results' in the CLI's --format json).",
+  "type": "object",
+  "required": ["schemaVersion", "file", "triples", "steps", "summary"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "file": { "type": "string", "description": "The file as the request named it." },
+    "triples": { "type": "integer", "description": "Number of triples; -1 if the file could not be parsed." },
+    "parseError": { "type": "string" },
+    "configuration": {
+      "type": "object",
+      "required": ["serverVersion", "contentHash", "files", "options", "problems", "notTranslated"],
+      "properties": {
+        "serverVersion": { "type": "string" },
+        "contentHash": { "type": "string", "description": "Short hash over the roles and SHA-256 of all loaded files." },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "path", "sha256"],
+            "properties": {
+              "role": { "enum": ["ontology", "rules", "shapes", "prefix-registry"] },
+              "path": { "type": "string" },
+              "sha256": { "type": "string" }
+            }
+          }
+        },
+        "options": { "type": "object", "additionalProperties": { "type": "string" } },
+        "problems": { "type": "array", "items": { "type": "string" } },
+        "notTranslated": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "status", "stats", "findings"],
+        "properties": {
+          "kind": { "enum": ["VOCAB", "INFERENCE", "DISJOINTNESS", "SHACL"] },
+          "status": { "enum": ["OK", "SKIPPED", "FINDINGS"] },
+          "stats": { "type": "object" },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["certainty", "code", "focus", "message", "hints"],
+              "properties": {
+                "certainty": { "enum": ["error", "suspect", "hint"] },
+                "code": {
+                  "type": "string",
+                  "description": "unknown-property, unknown-class, unknown-resource, undefined-term, class-used-as-property, property-used-as-class, unknown-datatype, not-a-datatype, invalid-literal, deprecated-term, minted-in-vocabulary-namespace, disjointness, shacl"
+                },
+                "focus": { "type": "string" },
+                "focusIri": { "type": "string" },
+                "path": { "type": "string" },
+                "pathIri": { "type": "string" },
+                "message": { "type": "string" },
+                "hints": { "type": "array", "items": { "type": "string" } },
+                "severity": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["error", "suspect", "hint", "parseErrors"],
+      "properties": {
+        "error": { "type": "integer" },
+        "suspect": { "type": "integer" },
+        "hint": { "type": "integer" },
+        "parseErrors": { "type": "integer" }
+      }
+    }
+  }
+}

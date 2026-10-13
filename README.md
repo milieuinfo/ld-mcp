@@ -56,6 +56,17 @@ fixed. A load that fails altogether keeps the previous configuration, and is not
 the next change. An `--ontologies`, `--rules` or `--shapes` path that does not exist at start-up
 stops the server: a typing error in the configuration should not silently skip a step.
 
+### Structured result
+
+Besides the text, `validate_file` returns the same result as `structuredContent`, described by an
+`outputSchema` on the tool: the JSON Schema
+[`validation-result.schema.json`](ld-mcp-vocab/src/main/resources/validation-result.schema.json)
+(version in `schemaVersion`). Per step the kind, status, figures and every finding (not capped at 50
+as in the text), each with `certainty`, a stable `code`, `focus`/`focusIri`, `path`/`pathIri`,
+`message`, `hints` and, for SHACL, `severity`; plus the configuration (version, loaded files with
+SHA-256, options, problems, restrictions not translated) and a summary per certainty. The command
+line writes the same structure with `--format json`.
+
 ### Network policy
 
 `lov_search` and `vocabulary_profile` fetch URLs that come from the model, and from content the

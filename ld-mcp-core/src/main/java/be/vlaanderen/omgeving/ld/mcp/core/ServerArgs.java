@@ -25,6 +25,7 @@ public final class ServerArgs {
     }
 
     private final Map<String, List<String>> values = new LinkedHashMap<>();
+    private final List<String> positional = new ArrayList<>();
 
     private ServerArgs() {
     }
@@ -40,11 +41,30 @@ public final class ServerArgs {
      *                                  given twice
      */
     public static ServerArgs parse(String[] args, Map<String, Kind> known) {
+        return parse(args, known, false);
+    }
+
+    /**
+     * Parses the command-line arguments, optionally with positional arguments (e.g. the files of a
+     * command): every argument that is neither a key nor the value of the preceding key.
+     *
+     * @param args       the arguments
+     * @param known      the keys (without {@code --}) and their kinds
+     * @param positional whether positional arguments are allowed; see {@link #positional()}
+     * @return the parsed arguments
+     * @throws IllegalArgumentException as {@link #parse(String[], Map)}, and for a positional
+     *                                  argument when none are allowed
+     */
+    public static ServerArgs parse(String[] args, Map<String, Kind> known, boolean positional) {
         ServerArgs parsed = new ServerArgs();
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (!arg.startsWith("--")) {
-                throw new IllegalArgumentException("Unexpected argument: " + arg);
+                if (!positional) {
+                    throw new IllegalArgumentException("Unexpected argument: " + arg);
+                }
+                parsed.positional.add(arg);
+                continue;
             }
             String key = arg.substring(2);
             Kind kind = known.get(key);
@@ -56,7 +76,8 @@ public final class ServerArgs {
             List<String> list = parsed.values.computeIfAbsent(key, k -> new ArrayList<>());
             switch (kind) {
                 case FLAG -> {
-                    if (hasValue) {
+                    // With positional arguments, the token after a flag is one of them.
+                    if (hasValue && !positional) {
                         throw new IllegalArgumentException(arg + " takes no value, but got '" + args[i + 1] + "'");
                     }
                 }
@@ -107,6 +128,15 @@ public final class ServerArgs {
             throw new IllegalArgumentException("Required argument missing: --" + key);
         }
         return list;
+    }
+
+    /**
+     * Returns the positional arguments.
+     *
+     * @return the arguments that were neither a key nor a value, in order
+     */
+    public List<String> positional() {
+        return List.copyOf(positional);
     }
 
     /**

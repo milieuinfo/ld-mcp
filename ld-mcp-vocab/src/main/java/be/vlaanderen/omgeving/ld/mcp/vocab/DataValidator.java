@@ -299,7 +299,8 @@ public final class DataValidator {
                     : code.equals("unknown-datatype") ? datatypeCertainty(iri)
                     : hint != null ? hint.certainty()
                     : vocabularyNamespaces.contains(namespace(iri)) ? Certainty.ERROR : Certainty.SUSPECT;
-            findings.add(new Finding(certainty, code, iri, null, message, hints, null));
+            boolean literal = code.equals("invalid-literal");
+            findings.add(new Finding(certainty, code, iri, null, message, hints, null, literal ? null : iri, null));
         });
         // Errors first, then suspects, then hints; within each, by IRI (the order of the map).
         findings.sort(Comparator.comparing(Finding::certainty));
@@ -314,10 +315,13 @@ public final class DataValidator {
     private Step disjointness(Model inferred, Model data) {
         ValidityReport report = ModelFactory.createInfModel(owlReasoner, inferred).validate();
         List<Finding> findings = new ArrayList<>();
-        report.getReports().forEachRemaining(r -> findings.add(new Finding(
-                r.isError() ? Certainty.ERROR : Certainty.SUSPECT, "disjointness",
-                r.getExtension() == null ? "" : String.valueOf(r.getExtension()), null,
-                shorten(data, r.getDescription()), List.of(), null)));
+        report.getReports().forEachRemaining(r -> {
+            Object ext = r.getExtension();
+            String iri = ext instanceof Node n && n.isURI() ? n.getURI() : null;
+            findings.add(new Finding(r.isError() ? Certainty.ERROR : Certainty.SUSPECT, "disjointness",
+                    ext == null ? "" : String.valueOf(ext), null, shorten(data, r.getDescription()), List.of(), null,
+                    iri, null));
+        });
         findings.sort(Comparator.comparing(Finding::message));
         boolean ok = report.isValid() && findings.isEmpty();
         return new Step(Kind.DISJOINTNESS, ok ? Status.OK : Status.FINDINGS, findings, Map.of("valid", report.isValid()));
@@ -353,9 +357,12 @@ public final class DataValidator {
             String severity = severityName(e.severity());
             Certainty certainty = e.severity() == Severity.Violation ? Certainty.ERROR
                     : e.severity() == Severity.Warning ? Certainty.SUSPECT : Certainty.HINT;
-            findings.add(new Finding(certainty, "shacl", shortNode(data, e.focusNode()),
+            Node focusNode = e.focusNode();
+            String pathIri = e.resultPath() instanceof org.apache.jena.sparql.path.P_Link link
+                    ? link.getNode().getURI() : null;
+            findings.add(new Finding(certainty, "shacl", shortNode(data, focusNode),
                     e.resultPath() == null ? null : shorten(data, e.resultPath().toString()),
-                    withValue(e, data), List.of(), severity));
+                    withValue(e, data), List.of(), severity, focusNode.isURI() ? focusNode.getURI() : null, pathIri));
         });
         findings.sort(Comparator.comparing(TextReport::shaclLine));
         return new Step(Kind.SHACL, Status.FINDINGS, findings, stats);

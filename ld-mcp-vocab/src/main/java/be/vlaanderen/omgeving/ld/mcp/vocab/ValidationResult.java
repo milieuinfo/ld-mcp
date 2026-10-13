@@ -132,29 +132,49 @@ public record ValidationResult(Header header, List<Step> steps) {
      *
      * @param certainty how sure it is
      * @param code      a stable identifier of the kind of finding, e.g. {@code unknown-property}
-     * @param focus     the resource it is about (an IRI, or a node as the report shows it)
-     * @param path      the property path, for SHACL; otherwise {@code null}
+     * @param focus     the resource it is about, as the report shows it (a prefixed name where one fits)
+     * @param path      the property path as the report shows it, for SHACL; otherwise {@code null}
      * @param message   the message
      * @param hints     further lines: near-miss hints and suggestions
      * @param severity  for SHACL the severity name ({@code violation}, {@code warning}, …); otherwise
      *                  {@code null}
+     * @param focusIri  the full IRI of the resource, or {@code null} for a blank node or literal
+     * @param pathIri   the full IRI of the path if it is one property, otherwise {@code null}
      */
     public record Finding(Certainty certainty, String code, String focus, String path, String message,
-                          List<String> hints, String severity) {
+                          List<String> hints, String severity, String focusIri, String pathIri) {
 
         /**
          * Copies the hints.
          *
          * @param certainty how sure it is
          * @param code      a stable identifier
-         * @param focus     the resource
+         * @param focus     the resource as shown
+         * @param path      the property path as shown, or {@code null}
+         * @param message   the message
+         * @param hints     further lines
+         * @param severity  the SHACL severity, or {@code null}
+         * @param focusIri  the full IRI of the resource, or {@code null}
+         * @param pathIri   the full IRI of the path, or {@code null}
+         */
+        public Finding {
+            hints = List.copyOf(hints);
+        }
+
+        /**
+         * A finding whose focus and path are shown as full IRIs (or are none).
+         *
+         * @param certainty how sure it is
+         * @param code      a stable identifier
+         * @param focus     the full IRI of the resource
          * @param path      the property path, or {@code null}
          * @param message   the message
          * @param hints     further lines
          * @param severity  the SHACL severity, or {@code null}
          */
-        public Finding {
-            hints = List.copyOf(hints);
+        public Finding(Certainty certainty, String code, String focus, String path, String message,
+                       List<String> hints, String severity) {
+            this(certainty, code, focus, path, message, hints, severity, focus, null);
         }
     }
 }

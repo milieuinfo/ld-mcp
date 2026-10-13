@@ -68,4 +68,16 @@ class ServerArgsTest {
                 () -> parse().required("ontologies"));
         assertEquals("Required argument missing: --ontologies", e.getMessage());
     }
+
+    @Test
+    void positionalArgumentsWhenAllowed() {
+        ServerArgs a = ServerArgs.parse(new String[] {"a.ttl", "--rules", "r", "--offline", "dir", "b.ttl"}, KNOWN, true);
+        assertEquals(List.of("a.ttl", "dir", "b.ttl"), a.positional());
+        assertEquals(List.of("r"), a.all("rules"));
+        assertTrue(a.flag("offline"));
+        assertEquals("Unknown argument: --x. Known: --offline, --ontologies, --rules",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ServerArgs.parse(new String[] {"a", "--x"}, KNOWN, true)).getMessage());
+    }
 }
+
