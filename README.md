@@ -169,10 +169,14 @@ mvn package
 # → ld-mcp-vocab/target/ld-mcp-vocab.jar
 ```
 
-**Releasing:** push a tag `v<version>` (e.g. `git tag v0.2.0 && git push origin v0.2.0`). The
-workflow `.github/workflows/release.yml` sets that version, builds and tests, and creates a GitHub
-Release with `ld-mcp-vocab.jar` attached. `.github/workflows/build.yml` builds and tests every
-push to `main` and every pull request.
+**Releasing:** on an up-to-date `main` without uncommitted changes, run
+`scripts/tag-release.sh <version>` (e.g. `scripts/tag-release.sh 0.2.2`; `--dry-run` only checks).
+The script refuses another branch, uncommitted changes, a `main` that differs from `origin/main`
+and an existing tag; it only creates and pushes the tag `v<version>`. The workflow
+`.github/workflows/release.yml` then sets that version, builds and tests from the tag, and creates
+a GitHub Release with `ld-mcp-vocab.jar` and `ld-mcp-vocab.jar.sha256`. Nothing is built from a
+working tree. `.github/workflows/build.yml` builds and tests every push to `main` and every pull
+request.
 
 ## Use in another project
 

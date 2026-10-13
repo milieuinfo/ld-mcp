@@ -1,6 +1,7 @@
-# Builds the server jars on every version tag (v0.1.0, v0.2.0, …) and attaches them to a GitHub
-# Release, so that users can download a jar instead of building it with Maven. The latest jar is
-# always at https://github.com/milieuinfo/ld-mcp/releases/latest/download/ld-mcp-vocab.jar
+# Builds the server jar on every version tag (v0.1.0, v0.2.0, …) and attaches it, with its SHA-256
+# checksum, to a GitHub Release, so that users can download a jar instead of building it with
+# Maven. Tags are made with scripts/tag-release.sh. The latest jar is always at
+# https://github.com/milieuinfo/ld-mcp/releases/latest/download/ld-mcp-vocab.jar
 name: release
 
 on:
@@ -21,10 +22,17 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Set the version from the tag
+        # versions-maven-plugin is pinned in the root pom (pluginManagement)
         run: mvn -B -q versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
       - name: Build and test
         run: mvn -B package
+      - name: Checksum
+        working-directory: ld-mcp-vocab/target
+        run: sha256sum ld-mcp-vocab.jar > ld-mcp-vocab.jar.sha256
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" ld-mcp-vocab/target/ld-mcp-vocab.jar --title "$GITHUB_REF_NAME" --generate-notes
+        run: >
+          gh release create "$GITHUB_REF_NAME"
+          ld-mcp-vocab/target/ld-mcp-vocab.jar ld-mcp-vocab/target/ld-mcp-vocab.jar.sha256
+          --title "$GITHUB_REF_NAME" --generate-notes
