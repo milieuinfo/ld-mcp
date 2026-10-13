@@ -222,6 +222,83 @@ and restrictions not translated; the server log lists the latter, and so does th
 Validation draws no conclusions from `owl:` axioms other than these restrictions and disjointness;
 SHACL shapes written by hand (`--shapes`) are the place for everything else.
 
+## Command line
+
+The same jar validates files and exports shapes without an MCP client, e.g. in CI. Without a
+command it is the MCP server, so an existing `.mcp.json` keeps working.
+
+```bash
+java -jar ld-mcp-vocab.jar validate [server options] [--format text|json|ttl] \
+    [--fail-on error|suspect] [--extensions ttl,jsonld] [--include-trig] <file or directory>…
+java -jar ld-mcp-vocab.jar generate-shapes [server options] [--out shapes.ttl]
+```
+
+The server options are those of the table above (`--ontologies`, `--rules`, `--shapes`,
+`--generate-shapes`, `--prefix-registry`, …), checked as strictly.
+
+**`validate`** loads the ontologies, rules and shapes once and validates every file given, and every
+data file in the directories given (recursively, sorted). In a directory, files count by extension:
+by default those of `--ontologies` (`.ttl`, `.rdf`, `.owl`, `.nt`, `.n3`, `.jsonld`); `--extensions
+ttl` restricts that, e.g. to skip a large JSON-LD export next to its Turtle subset. `.trig` is skipped
+unless `--include-trig`; a TriG or N-Quads file is validated with its default graph and all named
+graphs together. Paths are not restricted to a data root, unlike `validate_file`.
+
+| `--format` | Output |
+|---|---|
+| `text` (default) | the report of `validate_file` per file, then `Summary: n file(s), e error(s), s suspect, h hint(s), p parse error(s)` |
+| `json` | `{"schemaVersion", "tool", "version", "problems", "results": [ … ], "summary"}`, each result as in [`validation-result.schema.json`](ld-mcp-vocab/src/main/resources/validation-result.schema.json) |
+| `ttl` | one `sh:ValidationReport` per file (`rdfs:label` the file, `sh:conforms` false if there is an error); every finding an `sh:ValidationResult` with `sh:focusNode`, `sh:resultPath` where it is one property, `sh:resultMessage`, `sh:resultSeverity` (error → `sh:Violation`, suspect → `sh:Warning`, hint → `sh:Info`) and `sh:sourceConstraintComponent` `urn:x-ld-mcp:component:<code>` |
+
+Exit code: `0` no finding at or above `--fail-on` (default `error`; `suspect` also fails on
+suspects, among them SHACL warnings), `1` findings, `2` an error in the arguments, a configuration
+problem (e.g. an ontology file that does not parse: the result would not be trustworthy) or a data
+file that does not parse.
+
+**`generate-shapes`** writes the shapes that `--generate-shapes` would use, as Turtle (to `--out`,
+or stdout): first a comment with the jar version, every source file with its SHA-256, the number of
+shapes and the restrictions not translated; then the shapes, sorted (subjects by IRI, predicates and
+objects by their text, blank nodes nested), so that the same ontologies give the same file and a
+diff in git shows only real changes. The `--out` file itself is never read as a source, also when it
+lies under `--ontologies`: otherwise its own hash would change the next export. Exit code `2` if an
+ontology file could not be read.
+
+### In CI
+
+A GitHub Actions job that fails on errors in the data examples and on shapes that are out of date
+(pin the version; the checksum is published next to each jar):
+
+```yaml
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      LD_MCP_VERSION: v0.4.0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Download ld-mcp-vocab
+        run: |
+          base=https://github.com/milieuinfo/ld-mcp/releases/download/$LD_MCP_VERSION
+          curl -sSfL -o ld-mcp-vocab.jar $base/ld-mcp-vocab.jar
+          curl -sSfL -o ld-mcp-vocab.jar.sha256 $base/ld-mcp-vocab.jar.sha256
+          sha256sum -c ld-mcp-vocab.jar.sha256
+      - name: Validate the examples
+        run: >
+          java -jar ld-mcp-vocab.jar validate
+          --ontologies src/main/resources --rules path/to/rules.rules --generate-shapes
+          --shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl --prefix-registry path/to/prefix.cc.ttl
+          --extensions ttl src/main/input
+      - name: Generated shapes are up to date
+        run: |
+          java -jar ld-mcp-vocab.jar generate-shapes --ontologies src/main/resources \
+              --prefix-registry path/to/prefix.cc.ttl --out /tmp/shapes.ttl
+          diff <(grep -v '^#' src/main/resources/generated-shapes.ttl) <(grep -v '^#' /tmp/shapes.ttl)
+```
+
+The diff leaves out the comment header: it names the version of the jar and the hashes of the
+sources, which change with every edit of an ontology even when the shapes do not.
+
 ## Download
 
 No need to build anything: every release has the jar attached. You only need **Java 21 or

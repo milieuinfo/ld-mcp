@@ -48,6 +48,11 @@ public final class VocabServer {
      * @throws InterruptedException if interrupted while serving
      */
     public static void main(String[] args) throws InterruptedException {
+        if (args.length > 0 && !args[0].startsWith("--")) {
+            // A command (validate, generate-shapes): the command line, not the MCP server.
+            System.exit(Cli.run(args, VERSION, System.out, System.err));
+            return;
+        }
         Setup setup;
         try {
             setup = setup(args);

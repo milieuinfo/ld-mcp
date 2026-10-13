@@ -7,8 +7,12 @@ import com.apicatalog.jsonld.JsonLdErrorCode;
 import com.apicatalog.jsonld.JsonLdOptions;
 import com.apicatalog.jsonld.loader.DocumentLoader;
 
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFParserBuilder;
 import org.apache.jena.riot.system.jsonld.TitaniumJsonLdOptions;
@@ -58,7 +62,8 @@ public final class JsonLd {
     }
 
     /**
-     * Reads a file into a new model, without network access for JSON-LD.
+     * Reads a file into a new model, without network access for JSON-LD. For a dataset (TriG,
+     * N-Quads), the model holds the default graph and all named graphs.
      *
      * @param file the file
      * @return the triples (and prefixes) of the file
@@ -66,8 +71,19 @@ public final class JsonLd {
      *                                            remote JSON-LD context
      */
     public static Model load(Path file) {
+        Lang lang = RDFLanguages.filenameToLang(file.toString());
+        if (lang == null || !RDFLanguages.isQuads(lang)) {
+            Model m = ModelFactory.createDefaultModel();
+            parser(file).parse(m);
+            return m;
+        }
+        // Through a dataset: parsing TriG or N-Quads into a model silently drops the named graphs.
+        Dataset ds = DatasetFactory.create();
+        parser(file).parse(ds);
         Model m = ModelFactory.createDefaultModel();
-        parser(file).parse(m);
+        m.add(ds.getDefaultModel());
+        ds.listModelNames().forEachRemaining(name -> m.add(ds.getNamedModel(name)));
+        m.setNsPrefixes(ds.getDefaultModel().getNsPrefixMap());
         return m;
     }
 }
