@@ -4,6 +4,6 @@ Validation: src/main/input/EnergieManagementSystem/bash/prefixen.ttl (0 triples)
 
 [INFERENCE] 0 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] no shape applies to this data (439 shapes loaded; graph: asserted data)

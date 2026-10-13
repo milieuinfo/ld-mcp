@@ -4,6 +4,6 @@ Validation: src/main/input/waterkwaliteit/waterlopen/waterlopen_meetplaatsen.ttl
 
 [INFERENCE] 1023 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (4 of 439 shapes applied to 182 focus node(s); graph: asserted data)

@@ -4,7 +4,7 @@ Validation: src/main/input/overstort/overstort_herzien.ttl (64 triples)
 
 [INFERENCE] 152 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s)
+[SHACL] 0 violation(s), 1 warning(s) (17 of 439 shapes applied to 12 focus node(s); graph: asserted data)
 - [warning] event:4004f4ea-117d-4e01-9b7d-6b6af865ad52  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

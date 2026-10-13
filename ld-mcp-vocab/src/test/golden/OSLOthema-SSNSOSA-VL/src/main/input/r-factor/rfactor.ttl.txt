@@ -4,9 +4,9 @@ Validation: src/main/input/r-factor/rfactor.ttl (2939 triples)
 
 [INFERENCE] 7993 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 160 violation(s)
+[SHACL] 160 violation(s) (27 of 439 shapes applied to 763 focus node(s); graph: asserted data)
 - ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p01>
 - ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p02>
 - ex:collectie-KMI-6408-2002-15daags  path: sosa:hasMember  — Or at focusNode <https://example.org/rfactor/obs-KMI-6408-2002-p03>

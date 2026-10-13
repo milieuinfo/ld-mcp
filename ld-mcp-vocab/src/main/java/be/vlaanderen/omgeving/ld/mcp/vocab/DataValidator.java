@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -30,6 +33,8 @@ import org.apache.jena.riot.RiotException;
 import org.apache.jena.shacl.ShaclValidator;
 import org.apache.jena.shacl.Shapes;
 import org.apache.jena.shacl.ValidationReport;
+import org.apache.jena.shacl.parser.Shape;
+import org.apache.jena.shacl.validation.VLib;
 import org.apache.jena.shacl.validation.Severity;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.vocabulary.OWL;
@@ -74,6 +79,9 @@ public final class DataValidator {
     private final Shapes shapes;
     private final PrefixRegistry registry;
     private ValidationResult.Configuration configuration;
+
+    /** What the SHACL step validates, as the report says it. */
+    static final String SHACL_GRAPH = "asserted data";
 
     /**
      * Prepares the subsets, reasoners and shapes from files; these are reused for every validation.
@@ -248,6 +256,8 @@ public final class DataValidator {
                     : vocabularyNamespaces.contains(namespace(iri)) ? Certainty.ERROR : Certainty.SUSPECT;
             findings.add(new Finding(certainty, code, iri, null, message, hints, null));
         });
+        // Errors first, then suspects, then hints; within each, by IRI (the order of the map).
+        findings.sort(Comparator.comparing(Finding::certainty));
         return new Step(Kind.VOCAB, findings.isEmpty() ? Status.OK : Status.FINDINGS, findings, Map.of());
     }
 
@@ -272,9 +282,11 @@ public final class DataValidator {
         if (shapes == null) {
             return new Step(Kind.SHACL, Status.SKIPPED, List.of(), Map.of());
         }
-        ValidationReport report = ShaclValidator.get().validate(shapes, data.getGraph());
+        Graph graph = data.getGraph();
+        ValidationReport report = ShaclValidator.get().validate(shapes, graph);
+        Map<String, Object> stats = shaclStats(graph);
         if (report.conforms()) {
-            return new Step(Kind.SHACL, Status.OK, List.of(), Map.of());
+            return new Step(Kind.SHACL, Status.OK, List.of(), stats);
         }
         List<Finding> findings = new ArrayList<>();
         report.getEntries().forEach(e -> {
@@ -286,7 +298,28 @@ public final class DataValidator {
                     e.message(), List.of(), severity));
         });
         findings.sort(Comparator.comparing(TextReport::shaclLine));
-        return new Step(Kind.SHACL, Status.FINDINGS, findings, Map.of());
+        return new Step(Kind.SHACL, Status.FINDINGS, findings, stats);
+    }
+
+    /**
+     * How much of the shapes the data met: the number of shapes with a target, how many of them
+     * had at least one focus node in the data, and the number of distinct focus nodes. A
+     * "conforms" with no shape applied says nothing about the data.
+     */
+    private Map<String, Object> shaclStats(Graph graph) {
+        int targetShapes = 0;
+        int applied = 0;
+        Set<Node> focus = new HashSet<>();
+        for (Shape shape : shapes.getTargetShapes()) {
+            targetShapes++;
+            Collection<Node> nodes = VLib.focusNodes(graph, shape);
+            if (!nodes.isEmpty()) {
+                applied++;
+                focus.addAll(nodes);
+            }
+        }
+        return Map.of("shapes", targetShapes, "applied", applied, "focusNodes", focus.size(),
+                "graph", SHACL_GRAPH);
     }
 
     /** "violation", "warning" or "info"; for a custom severity, its local name in lower case. */

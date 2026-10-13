@@ -4,9 +4,9 @@ Validation: src/main/input/overstort/alternatief/overstort_emissie.ttl (125 trip
 
 [INFERENCE] 320 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s)
+[SHACL] 0 violation(s), 4 warning(s) (25 of 439 shapes applied to 25 focus node(s); graph: asserted data)
 - [warning] alt:obs-P_000000217952-20240727T140000Z-debiet  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] alt:obs-P_000000217952-20240727T140000Z-overstortduur  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] alt:obs-P_000000217952-20240727T140000Z-status  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).

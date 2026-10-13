@@ -83,11 +83,14 @@ final class VocabTools {
                                     Tools.optionalInt(a, "limit", 25, 1, 200)));
                         }),
                 Tools.textTool("validate_file",
-                        "Validates an RDF data file (.ttl, …): unknown properties/classes "
-                                + "(with suggestions, including http/https and '#'/'/' "
-                                + "near misses), rule inference, OWL consistency "
-                                + "(owl:disjointWith) and SHACL. Modified ontologies, rules or "
-                                + "shapes are reloaded automatically.",
+                        "Validates an RDF data file (.ttl, …) in four steps. VOCAB: unknown properties, "
+                                + "classes and other IRIs in loaded vocabulary namespaces, and resources the data "
+                                + "mints in such a namespace; each finding marked error, suspect or hint, with "
+                                + "suggestions (http/https and '#'/'/' near misses). INFERENCE: the --rules, if any. "
+                                + "DISJOINTNESS: class disjointness only (owl:disjointWith, AllDisjointClasses, "
+                                + "disjointUnionOf), not full OWL consistency. SHACL: the shapes on the asserted "
+                                + "data, with how many shapes applied. Modified ontologies, rules or shapes are "
+                                + "reloaded automatically.",
                         Tools.objectSchema(
                                 Map.of("path", Tools.string(
                                         "Path to the file, relative to the project root (--data-root); "

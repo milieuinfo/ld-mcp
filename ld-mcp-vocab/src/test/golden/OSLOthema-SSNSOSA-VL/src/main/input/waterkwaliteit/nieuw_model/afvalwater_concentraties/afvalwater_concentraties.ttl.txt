@@ -4,9 +4,9 @@ Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_concentraties/a
 
 [INFERENCE] 673 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 30 warning(s)
+[SHACL] 0 violation(s), 30 warning(s) (33 of 439 shapes applied to 61 focus node(s); graph: asserted data)
 - [warning] ex:observatie-16231-P_1017  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-16231-P_1017  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-16231-P_1100  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

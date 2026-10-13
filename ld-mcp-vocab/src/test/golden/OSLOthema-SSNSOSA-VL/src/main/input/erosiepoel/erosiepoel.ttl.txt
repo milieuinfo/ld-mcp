@@ -4,6 +4,6 @@ Validation: src/main/input/erosiepoel/erosiepoel.ttl (36 triples)
 
 [INFERENCE] 133 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (18 of 439 shapes applied to 8 focus node(s); graph: asserted data)

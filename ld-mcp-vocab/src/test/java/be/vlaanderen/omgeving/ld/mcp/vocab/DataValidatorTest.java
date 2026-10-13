@@ -9,6 +9,7 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -78,8 +79,9 @@ class DataValidatorTest {
 
     @Test
     void unknownTermWithSuggestion() throws IOException {
+        // ssn: is not loaded here, so the term cannot be ruled out: a suspect, not an error.
         String out = validator(false).validate(data("ex:s ssn:implements ex:p ."));
-        assertTrue(out.contains("[VOCAB ERROR] 1"), out);
+        assertTrue(out.contains("[VOCAB] 0 error(s), 1 suspect, 0 hint(s)"), out);
         assertTrue(out.contains("sosa:implements"), out);
     }
 
@@ -114,28 +116,28 @@ class DataValidatorTest {
                 ex:b a sosa:Observation .
                 """));
         assertTrue(out.contains("[VOCAB] ok"), out);
-        assertTrue(out.contains("[MODEL INVALID]"), out);
+        assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)"), out);
         assertTrue(out.contains("ex:b"), out);
     }
 
     @Test
     void allDisjointClassesBecomePairs() throws IOException {
         String out = validator(false).validate(data("ex:x a voc:A , voc:C ."));
-        assertTrue(out.contains("[MODEL INVALID]"), out);
+        assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)"), out);
         assertTrue(out.contains("ex:x"), out);
     }
 
     @Test
     void disjointUnionMembersAreDisjoint() throws IOException {
         String out = validator(false).validate(data("ex:y a voc:D , voc:E ."));
-        assertTrue(out.contains("[MODEL INVALID]"), out);
+        assertTrue(out.contains("[DISJOINTNESS] 1 violation(s)"), out);
     }
 
     @Test
     void validWithoutRulesSkipsInference() throws IOException {
         String out = validator(false).validate(data("ex:a a sosa:Observation ."));
         assertTrue(out.contains("[INFERENCE] skipped"), out);
-        assertTrue(out.contains("[OWL] consistent"), out);
+        assertTrue(out.contains("[DISJOINTNESS] ok"), out);
         assertTrue(out.contains("[SHACL] skipped"), out);
     }
 
@@ -235,7 +237,8 @@ class DataValidatorTest {
                 """);
         DataValidator validator = new DataValidator(ontology, new VocabIndex(ontology), null, shapes, false, null);
         String out = validator.validate(data("ex:a a sosa:Observation ."));
-        assertTrue(out.contains("[SHACL] 0 violation(s), 1 warning(s)"), out);
+        assertTrue(out.contains("[SHACL] 0 violation(s), 1 warning(s) (1 of 1 shapes applied to 1 focus node(s); "
+                + "graph: asserted data)"), out);
         assertTrue(out.contains("- [warning] ex:a  path: sosa:madeBySensor  — R2: madeBySensor aanbevolen"), out);
     }
 
@@ -316,6 +319,46 @@ class DataValidatorTest {
         assertTrue(bad.steps().isEmpty());
         assertTrue(bad.header().parseError() != null);
         assertEquals(-1, bad.header().triples());
+    }
+
+    private DataValidator withShapes(String shapesTtl) throws IOException {
+        Model ontology = ModelFactory.createDefaultModel();
+        ontology.read(new StringReader(ONTOLOGY), null, "TTL");
+        Path shapes = Files.writeString(dir.resolve("shapes.ttl"), shapesTtl);
+        return new DataValidator(ontology, new VocabIndex(ontology), null, shapes, false, null);
+    }
+
+    @Test
+    void shaclSaysWhenNoShapeApplies() throws IOException {
+        DataValidator v = withShapes("""
+                @prefix sh:   <http://www.w3.org/ns/shacl#> .
+                @prefix sosa: <http://www.w3.org/ns/sosa/> .
+                [] a sh:NodeShape ; sh:targetClass sosa:Observation ; sh:property [ sh:path sosa:madeBySensor ; sh:minCount 1 ] .
+                [] a sh:NodeShape ; sh:targetClass sosa:Sample ; sh:property [ sh:path sosa:isSampleOf ; sh:minCount 1 ] .
+                """);
+        String none = v.validate(data("ex:a a voc:A ."));
+        assertTrue(none.contains("[SHACL] no shape applies to this data (2 shapes loaded; graph: asserted data)"), none);
+        String some = v.validate(data("ex:a a sosa:Observation ; sosa:madeBySensor ex:s ."));
+        assertTrue(some.contains("[SHACL] conforms (1 of 2 shapes applied to 1 focus node(s); graph: asserted data)"), some);
+    }
+
+    @Test
+    void vocabularyFindingsAreTaggedAndErrorsComeFirst() throws IOException {
+        String out = validatorWithRegistry().validate(data("""
+                ex:a <http://www.w3.org/ns/dcat#keyword> "x" ; qudt:noSuch unit:M .
+                """));
+        assertTrue(out.contains("[VOCAB] 1 error(s), 0 suspect, 1 hint(s)"), out);
+        assertTrue(out.indexOf("- [error] Unknown property: http://qudt.org/schema/qudt/noSuch")
+                < out.indexOf("- [hint] Unknown property: http://www.w3.org/ns/dcat#keyword"), out);
+    }
+
+    @Test
+    void disjointnessWarningsAreCountedApart() {
+        ValidationResult.Step step = new ValidationResult.Step(ValidationResult.Kind.DISJOINTNESS,
+                ValidationResult.Status.FINDINGS, List.of(new ValidationResult.Finding(ValidationResult.Certainty.SUSPECT,
+                        "disjointness", "x", null, "odd", List.of(), null)), Map.of("valid", true));
+        String out = TextReport.render(new ValidationResult(new ValidationResult.Header("f", 1, null, null), List.of(step)));
+        assertTrue(out.contains("[DISJOINTNESS] 0 violation(s), 1 warning(s)\n- [warning] odd"), out);
     }
 }
 

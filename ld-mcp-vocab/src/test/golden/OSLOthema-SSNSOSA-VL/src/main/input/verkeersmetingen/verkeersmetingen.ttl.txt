@@ -4,6 +4,6 @@ Validation: src/main/input/verkeersmetingen/verkeersmetingen.ttl (547 triples)
 
 [INFERENCE] 1023 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (27 of 439 shapes applied to 133 focus node(s); graph: asserted data)

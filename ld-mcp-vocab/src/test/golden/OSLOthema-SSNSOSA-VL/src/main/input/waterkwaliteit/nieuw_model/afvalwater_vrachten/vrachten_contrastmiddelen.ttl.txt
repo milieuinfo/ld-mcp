@@ -4,9 +4,9 @@ Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vracht
 
 [INFERENCE] 430 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 14 warning(s)
+[SHACL] 0 violation(s), 14 warning(s) (29 of 439 shapes applied to 41 focus node(s); graph: asserted data)
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_117  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_125  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_126  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

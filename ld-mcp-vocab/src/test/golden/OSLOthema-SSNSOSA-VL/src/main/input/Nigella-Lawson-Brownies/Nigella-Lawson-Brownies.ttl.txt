@@ -4,6 +4,6 @@ Validation: src/main/input/Nigella-Lawson-Brownies/Nigella-Lawson-Brownies.ttl (
 
 [INFERENCE] 902 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (31 of 439 shapes applied to 84 focus node(s); graph: asserted data)

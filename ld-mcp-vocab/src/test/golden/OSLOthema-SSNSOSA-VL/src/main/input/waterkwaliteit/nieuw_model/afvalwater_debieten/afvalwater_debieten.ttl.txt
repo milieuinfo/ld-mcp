@@ -4,9 +4,9 @@ Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalw
 
 [INFERENCE] 208 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s)
+[SHACL] 0 violation(s), 4 warning(s) (28 of 439 shapes applied to 20 focus node(s); graph: asserted data)
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400007-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

@@ -4,7 +4,7 @@ Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldPreHeatingHvac/D
 
 [INFERENCE] 458 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s)
+[SHACL] 0 violation(s), 1 warning(s) (36 of 439 shapes applied to 43 focus node(s); graph: asserted data)
 - [warning] exec:bezettingsvoorspelling_001  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

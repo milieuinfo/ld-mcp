@@ -99,13 +99,21 @@ reproduced. Then it reports each step on its own line:
 
 | Marker | Meaning |
 |---|---|
-| `[VOCAB] ok` / `[VOCAB ERROR]` | Every predicate, every `rdf:type` object and every other IRI in a vocabulary namespace occurs in the ontologies / unknown terms, with suggestions |
+| `[VOCAB] ok` / `[VOCAB] n error(s), m suspect, k hint(s)` | Every predicate, every `rdf:type` object and every other IRI in a vocabulary namespace occurs in the ontologies / the findings, each marked `[error]`, `[suspect]` or `[hint]` (see below), errors first, with suggestions |
 | `[INFERENCE]` | Number of triples inferred by the rules, or `skipped` |
-| `[OWL] consistent` / `[MODEL INVALID]` | OWL consistency after inference / disjointness violations |
-| `[SHACL] conforms` / `[SHACL] n violation(s), m warning(s)` | SHACL result, or `skipped`. Results are grouped by `sh:severity`: violations first, then warnings and info, marked `[warning]`/`[info]`. Note that `sh:severity` belongs on the shape, not on an `sh:sparql` constraint |
+| `[DISJOINTNESS] ok` / `[DISJOINTNESS] n violation(s)` | Class disjointness (`owl:disjointWith`, `owl:AllDisjointClasses`, `owl:disjointUnionOf`) after inference. Only disjointness: not functional properties, `owl:differentFrom`, `owl:complementOf` or datatypes, so not full OWL consistency |
+| `[SHACL] conforms (a of n shapes applied to k focus node(s); graph: …)` / `[SHACL] no shape applies to this data` / `[SHACL] n violation(s), m warning(s) (…)` | SHACL result, or `skipped`. The part in brackets says how much of the shapes met the data: a `conforms` with few shapes applied proves little. Results are grouped by `sh:severity`: violations first, then warnings and info, marked `[warning]`/`[info]`. Note that `sh:severity` belongs on the shape, not on an `sh:sparql` constraint |
+
+How sure a `[VOCAB]` finding is:
+
+| Mark | When |
+|---|---|
+| `[error]` | an unknown term in a loaded namespace (it certainly does not exist), or a resource minted in a vocabulary namespace |
+| `[suspect]` | a near miss (`http`/`https`, `#`/`/`), or an unknown term in a namespace that is neither loaded nor in the prefix registry (usually a typo) |
+| `[hint]` | the namespace is in the prefix registry but not loaded: the term may well exist; load the ontology to check |
 
 A *vocabulary namespace* is any namespace (IRI up to the last `#` or `/`) in which the ontologies
-define resources. Under `[VOCAB ERROR]`:
+define resources. Kinds of `[VOCAB]` findings:
 
 - `Unknown property` / `Unknown class`: a predicate or `rdf:type` object that the ontologies do
   not mention;

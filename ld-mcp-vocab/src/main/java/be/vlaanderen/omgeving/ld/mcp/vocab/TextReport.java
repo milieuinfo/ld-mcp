@@ -7,8 +7,10 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Certainty;
 import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Finding;
 import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Status;
 import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Step;
@@ -57,14 +59,25 @@ public final class TextReport {
             sb.append("\n[VOCAB] ok\n");
             return;
         }
-        sb.append("\n[VOCAB ERROR] ").append(step.findings().size()).append(" unknown term(s)\n");
+        sb.append("\n[VOCAB] ").append(count(step, Certainty.ERROR)).append(" error(s), ")
+                .append(count(step, Certainty.SUSPECT)).append(" suspect, ")
+                .append(count(step, Certainty.HINT)).append(" hint(s)\n");
         List<String> lines = new ArrayList<>();
         for (Finding f : step.findings()) {
-            StringBuilder line = new StringBuilder("- ").append(f.message());
+            StringBuilder line = new StringBuilder("- [").append(tag(f.certainty())).append("] ").append(f.message());
             f.hints().forEach(hint -> line.append("\n    ").append(hint));
             lines.add(line.toString());
         }
         appendCapped(sb, lines);
+    }
+
+    private static long count(Step step, Certainty certainty) {
+        return step.findings().stream().filter(f -> f.certainty() == certainty).count();
+    }
+
+    /** {@code error}, {@code suspect} or {@code hint}. */
+    static String tag(Certainty certainty) {
+        return certainty.name().toLowerCase(Locale.ROOT);
     }
 
     private static void inference(Step step, StringBuilder sb) {
@@ -77,13 +90,15 @@ public final class TextReport {
 
     private static void disjointness(Step step, StringBuilder sb) {
         if (step.status() == Status.OK) {
-            sb.append("\n[OWL] consistent\n");
+            sb.append("\n[DISJOINTNESS] ok\n");
             return;
         }
-        boolean valid = Boolean.TRUE.equals(step.stats().get("valid"));
-        sb.append("\n[MODEL INVALID] ").append(step.findings().size()).append(" message(s)")
-                .append(valid ? " (warnings only)" : "").append('\n');
-        appendCapped(sb, step.findings().stream().map(f -> "- " + f.message()).toList());
+        long violations = count(step, Certainty.ERROR);
+        long warnings = step.findings().size() - violations;
+        sb.append("\n[DISJOINTNESS] ").append(violations).append(" violation(s)")
+                .append(warnings > 0 ? ", " + warnings + " warning(s)" : "").append('\n');
+        appendCapped(sb, step.findings().stream()
+                .map(f -> "- " + (f.certainty() == Certainty.ERROR ? "" : "[warning] ") + f.message()).toList());
     }
 
     private static void shacl(Step step, StringBuilder sb) {
@@ -91,8 +106,16 @@ public final class TextReport {
             sb.append("\n[SHACL] skipped (no --shapes or --generate-shapes)\n");
             return;
         }
+        Map<String, Object> st = step.stats();
+        String coverage = st.isEmpty() ? "" : " (" + st.get("applied") + " of " + st.get("shapes")
+                + " shapes applied to " + st.get("focusNodes") + " focus node(s); graph: " + st.get("graph") + ")";
         if (step.status() == Status.OK) {
-            sb.append("\n[SHACL] conforms\n");
+            if (!st.isEmpty() && Integer.valueOf(0).equals(st.get("applied"))) {
+                sb.append("\n[SHACL] no shape applies to this data (").append(st.get("shapes"))
+                        .append(" shapes loaded; graph: ").append(st.get("graph")).append(")\n");
+            } else {
+                sb.append("\n[SHACL] conforms").append(coverage).append('\n');
+            }
             return;
         }
         // Violations first, then warnings, then info, then other severities; only those after
@@ -115,7 +138,7 @@ public final class TextReport {
             }
             lines.addAll(entries);
         });
-        sb.append("\n[SHACL] ").append(String.join(", ", counts)).append('\n');
+        sb.append("\n[SHACL] ").append(String.join(", ", counts)).append(coverage).append('\n');
         appendCapped(sb, lines);
     }
 

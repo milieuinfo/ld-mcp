@@ -1,13 +1,13 @@
 Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldStilleggingProductielijn/DatavoorbeeldStilleggingProductielijn_herzien.ttl (137 triples)
 
-[VOCAB ERROR] 3 unknown term(s)
-- Unknown resource: http://qudt.org/vocab/unit/EUR-PER-MegaW-HR
+[VOCAB] 3 error(s), 0 suspect, 0 hint(s)
+- [error] Unknown resource: http://qudt.org/vocab/unit/EUR-PER-MegaW-HR
     Similar terms: prefix:Mega, unit:MegaW, unit:MegaW-HR, unit:PER-M, unit:W-HR
-- Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
-- Unknown resource: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
+- [error] Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
+- [error] Unknown resource: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
 
 [INFERENCE] 311 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (32 of 439 shapes applied to 27 focus node(s); graph: asserted data)

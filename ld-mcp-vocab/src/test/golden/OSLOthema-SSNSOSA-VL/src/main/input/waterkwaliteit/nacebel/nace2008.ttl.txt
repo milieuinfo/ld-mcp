@@ -4,6 +4,6 @@ Validation: src/main/input/waterkwaliteit/nacebel/nace2008.ttl (33 triples)
 
 [INFERENCE] 119 inferred triples
 
-[OWL] consistent
+[DISJOINTNESS] ok
 
-[SHACL] conforms
+[SHACL] conforms (1 of 439 shapes applied to 1 focus node(s); graph: asserted data)
