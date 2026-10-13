@@ -61,20 +61,20 @@ import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Step;
 /**
  * Validates an RDF data file against the loaded ontologies, in four steps:
  * <ol>
- *   <li>vocabulary: every predicate and every {@code rdf:type} object must occur in the
- *       ontologies, and so must every other IRI in a namespace that the ontologies define
- *       resources in (e.g. a QUDT unit). A data file may not mint new resources in such a
- *       namespace either;</li>
+ *   <li>vocabulary: every predicate and every {@code rdf:type} object must be a known term
+ *       ({@link VocabIndex#isKnown}) in the right role, and so must every other IRI in a namespace
+ *       in which the ontologies declare terms (e.g. a QUDT unit); literals must have a known
+ *       datatype and a valid lexical form; deprecated terms are flagged; a data file may not mint
+ *       resources in a vocabulary namespace;</li>
  *   <li>rule inference (optional, {@code --rules}) with the structural subset
  *       (subClassOf, subPropertyOf, inverseOf, domain, range);</li>
- *   <li>class disjointness: {@code owl:disjointWith}
- *       (including {@code owl:AllDisjointClasses} and {@code owl:disjointUnionOf}, expanded into
- *       pairs), on the model after inference;</li>
+ *   <li>class disjointness ({@code owl:disjointWith}, {@code owl:AllDisjointClasses},
+ *       {@code owl:disjointUnionOf}) of the types after inference, with their superclasses;</li>
  *   <li>SHACL (optional, {@code --shapes} and/or {@code --generate-shapes}) on the data plus the
  *       class hierarchy and the types of referenced terms, without inferred triples.</li>
  * </ol>
- * The report marks each step with {@code [VOCAB]}/{@code [VOCAB ERROR]}, {@code [INFERENCE]},
- * {@code [OWL]}/{@code [MODEL INVALID]} and {@code [SHACL]}.
+ * {@link #check} returns the result as data ({@link ValidationResult}); {@link #validate} renders
+ * it as text ({@link TextReport}).
  */
 public final class DataValidator {
 

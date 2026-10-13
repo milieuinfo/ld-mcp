@@ -5,7 +5,7 @@
 een gebruiker moet aanpassen, en het effect op de voorbeelden van OSLOthema-SSNSOSA-VL (golden
 suite, `ld-mcp-vocab/src/test/golden/`, project op `c85bd34`).*
 
-Aan te passen buiten ld-mcp, dezelfde dag als de release:
+Aan te passen buiten ld-mcp, dezelfde dag als de release (samenvatting; details per pakket hieronder):
 - **oslo-ld-kit**, `guide/linked-data.md` (Validation): de markertabel en de alinea "SHACL validates
   the non-inferred graph" (zie 3.1 en 3.3); de vertaaltabel onder "Ontologies and application
   profiles" (zie 3.8–3.10).
@@ -260,3 +260,29 @@ beide richtingen) van zijn types (na `--rules`) en toetst ze aan de disjuncte pa
 lineair: het bestand van 678.000 triples kost nu 12 s (waarvan 9 s parsen), de golden suite 9 s in
 plaats van 13–17 s. De melding zegt ook langs welk type: `ex:x is a voc:Animal (as a voc:Beast) and a
 voc:Plant, which are disjoint classes`.
+
+
+---
+
+## Samengevat: wat buiten ld-mcp moet gebeuren
+
+**oslo-ld-kit**
+1. `guide/linked-data.md`, Validation: de markertabel (`[VOCAB] … error(s), … suspect, … hint(s)` met
+   `[error]`/`[suspect]`/`[hint]`; `[DISJOINTNESS]`; de dekking bij `[SHACL]`), de nieuwe soorten
+   meldingen (undefined term, rolfouten, datatypes, deprecated), en de alinea over de SHACL-graaf
+   (3.3).
+2. `guide/linked-data.md`, Ontologies and application profiles: `owl:someValuesFrom C` wordt "minstens
+   één waarde is een C" (`sh:qualifiedValueShape`), niet meer `sh:class C` + `sh:minCount 1`; de
+   `minCardinality 0`-conventie heft de existentiële restrictie volledig op (3.9).
+3. R3 (`guide/ssn-sosa.md`): `sosa:Result` is in de geladen SSN/SOSA 2023-editie `owl:deprecated`
+   (3.6).
+
+**OSLOthema-SSNSOSA-VL**
+1. §5 van `CLAUDE.md`: markers; "zelfde resultaat als `generated-shapes.ttl`" schrappen (D4); de
+   verschillen met de Scala-pipeline (tot fase 4b).
+2. Beslissen over de 91 meldingen `sosa:isFeatureOfInterestOf` in `waterlopen_meetplaatsen.ttl`
+   (3.3) en over `ex:unit-rfactor` (3.3).
+3. `waterlopen_meetplaatsen.ttl`/`oppervlaktewater_concentraties.ttl`: eenheid als datatype, en
+   notatie-datatypes die als `rdf:Property` gedeclareerd zijn (3.5).
+4. Fase 4b (vervangen van de Scala-pipeline) met `validate --extensions ttl src/main/input` en
+   `generate-shapes`; de CI-snippet staat in de README van ld-mcp.
