@@ -270,9 +270,13 @@ public final class Workspace {
         }
     }
 
-    /** Files under the ontology paths that are not ontologies: the prefix registry. */
+    /** Files under the ontology paths that are not ontologies: the shapes and the prefix registry. */
     private Set<Path> excluded() {
-        return prefixRegistry == null ? Set.of() : Set.of(prefixRegistry);
+        Set<Path> excluded = new java.util.HashSet<>(shapes);
+        if (prefixRegistry != null) {
+            excluded.add(prefixRegistry);
+        }
+        return excluded;
     }
 
     /** The prefix registry, or {@code null} if none is configured or it cannot be read. */

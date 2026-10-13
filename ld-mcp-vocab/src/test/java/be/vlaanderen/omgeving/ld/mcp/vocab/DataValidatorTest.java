@@ -564,5 +564,15 @@ class DataValidatorTest {
                 index.lookup("https://example.org/voc/old"));
         assertFalse(index.lookup("https://example.org/voc/fine").contains("deprecated"));
     }
+
+    @Test
+    void anOntologyHeaderOrAShapeDoesNotMakeAVocabularyNamespace() throws IOException {
+        String out = validatorFor(ROLES + """
+                @prefix sh: <http://www.w3.org/ns/shacl#> .
+                <https://example.org/onto> a owl:Ontology .
+                <https://example.org/shapes/ThingShape> a sh:NodeShape ; sh:targetClass voc:Thing .
+                """).validate(data("ex:t1 a voc:Thing . <https://example.org/shapes/s1> a voc:Thing ."));
+        assertTrue(out.contains("[VOCAB] ok"), out);
+    }
 }
 

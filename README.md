@@ -121,10 +121,14 @@ How sure a `[VOCAB]` finding is:
 | `[hint]` | the namespace is in the prefix registry but not loaded: the term may well exist; load the ontology to check |
 
 A *vocabulary namespace* is any namespace (IRI up to the last `#` or `/`) in which the ontologies
-define resources. Kinds of `[VOCAB]` findings:
+declare terms (classes, properties, datatypes, typed individuals such as units and concepts).
+Ontology headers and SHACL shapes do not count, and the `--shapes` files are never loaded as
+ontologies, even if they lie under `--ontologies`. A typed example individual in the ontology
+directory still makes its namespace a vocabulary namespace: keep example data out of it. Kinds of `[VOCAB]` findings:
 
 A term is *known* when the ontologies declare it (give it a type, or make it the subject of
-`rdfs:subClassOf`, `rdfs:subPropertyOf`, `rdfs:domain` or `rdfs:range`), or when it is a term of
+`rdfs:subClassOf`, `rdfs:subPropertyOf`, `rdfs:domain`, `rdfs:range`, `owl:equivalentClass`,
+`owl:equivalentProperty`, `owl:disjointWith`, `owl:disjointUnionOf` or `owl:inverseOf`), or when it is a term of
 RDF, RDFS, OWL 2 or XSD (always known, whether or not a loaded ontology mentions it; the list comes
 from Jena, so `rdfs:lable` is still unknown). `lookup_term` uses the same definition.
 

@@ -129,9 +129,8 @@ public final class DataValidator {
                          PrefixRegistry registry) {
         this.ontology = ontology;
         this.index = index;
-        this.vocabularyNamespaces = new HashSet<>();
-        ontology.listSubjects().filterKeep(Resource::isURIResource)
-                .forEachRemaining(s -> vocabularyNamespaces.add(namespace(s.getURI())));
+        // Only namespaces of declared terms: not of ontology headers, shapes or other subjects.
+        this.vocabularyNamespaces = index.namespaces();
         this.structural = subset(ontology,
                 RDFS.subClassOf, RDFS.subPropertyOf, OWL.inverseOf, RDFS.domain, RDFS.range);
         this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()

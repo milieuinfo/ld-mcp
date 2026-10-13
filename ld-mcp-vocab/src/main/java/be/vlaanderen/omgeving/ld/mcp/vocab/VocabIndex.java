@@ -37,6 +37,18 @@ public final class VocabIndex {
             RDFS.Class, OWL.Class, RDF.Property,
             OWL.ObjectProperty, OWL.DatatypeProperty, OWL.AnnotationProperty);
 
+    /** Properties whose subject is thereby declared as a class or property. */
+    private static final List<Property> DECLARING = List.of(RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain,
+            RDFS.range, OWL.equivalentClass, OWL.equivalentProperty, OWL.disjointWith,
+            org.apache.jena.vocabulary.OWL2.disjointUnionOf, OWL.inverseOf);
+
+    private static final String SH = "http://www.w3.org/ns/shacl#";
+
+    /** Types that make a subject something other than a term. */
+    private static final Set<RDFNode> NOT_TERMS = Set.of(OWL.Ontology,
+            ResourceFactory.createResource(SH + "NodeShape"), ResourceFactory.createResource(SH + "PropertyShape"),
+            ResourceFactory.createResource(SH + "Shape"));
+
     private static final Set<Resource> CLASS_TYPES = Set.of(RDFS.Class, OWL.Class, RDFS.Datatype);
     private static final Set<Resource> PROPERTY_TYPES = Set.of(RDF.Property, OWL.ObjectProperty,
             OWL.DatatypeProperty, OWL.AnnotationProperty, OWL.FunctionalProperty, OWL.InverseFunctionalProperty,
@@ -59,19 +71,41 @@ public final class VocabIndex {
                     .filterKeep(Resource::isURIResource)
                     .forEachRemaining(found::add);
         }
-        // Named individuals, such as units (qudt:Unit) or concepts, but not ontology headers.
+        // Named individuals, such as units (qudt:Unit) or concepts, but not ontology headers or
+        // SHACL shapes (a shapes file next to the ontologies, or generated shapes).
         model.listStatements(null, RDF.type, (RDFNode) null).forEachRemaining(st -> {
-            if (st.getSubject().isURIResource() && !st.getObject().equals(OWL.Ontology)) {
+            if (st.getSubject().isURIResource() && !NOT_TERMS.contains(st.getObject())) {
                 found.add(st.getSubject());
             }
         });
-        // Also terms that are only declared through subClassOf/subPropertyOf/domain/range.
-        for (Property p : List.of(RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range)) {
+        // Also terms that are only declared through an axiom about them.
+        for (Property p : DECLARING) {
             model.listSubjectsWithProperty(p)
                     .filterKeep(Resource::isURIResource)
                     .forEachRemaining(found::add);
         }
+        // A subject typed only as a header or a shape is no term, also if it was found above.
+        found.removeIf(r -> {
+            List<RDFNode> types = model.listObjectsOfProperty(r, RDF.type).toList();
+            return !types.isEmpty() && NOT_TERMS.containsAll(types);
+        });
         this.terms = List.copyOf(found);
+    }
+
+    /**
+     * Returns the namespaces of the indexed terms: everything up to and including the last
+     * {@code #} or {@code /}.
+     *
+     * @return the namespaces in which the ontologies declare terms
+     */
+    public Set<String> namespaces() {
+        Set<String> out = new java.util.HashSet<>();
+        terms.forEach(t -> out.add(namespaceOf(t.getURI())));
+        return out;
+    }
+
+    private static String namespaceOf(String iri) {
+        return iri.substring(0, Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1);
     }
 
     /**
@@ -97,7 +131,8 @@ public final class VocabIndex {
      *
      * @param iri the full IRI of the term
      * @return whether the loaded ontologies declare the term (give it a type, or make it the
-     *         subject of {@code subClassOf}, {@code subPropertyOf}, {@code domain} or {@code range})
+     *         subject of {@code subClassOf}, {@code subPropertyOf}, {@code domain}, {@code range}
+     *         or an OWL class or property axiom)
      */
     public boolean contains(String iri) {
         int i = Collections.binarySearch(terms, ResourceFactory.createResource(iri),
@@ -298,8 +333,8 @@ public final class VocabIndex {
                     render(st.getSubject()) + " " + render(st.getPredicate()) + " " + shortForm(iri)));
             model.listStatements(r, null, (RDFNode) null).forEachRemaining(st -> where.add(
                     shortForm(iri) + " " + render(st.getPredicate()) + " " + render(st.getObject())));
-            sb.append("The loaded ontologies mention it but do not declare it (no type, no subClassOf, "
-                    + "subPropertyOf, domain or range): ")
+            sb.append("The loaded ontologies mention it but do not declare it (no type, and no "
+                    + "subClassOf, subPropertyOf, domain, range or OWL axiom about it): ")
                     .append(String.join("; ", where.stream().sorted().limit(3).toList()))
                     .append(where.size() > 3 ? "; …" : "").append('\n');
         }

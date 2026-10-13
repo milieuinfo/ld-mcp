@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -220,4 +221,28 @@ class WorkspaceTest {
         Workspace.State state = new Workspace(List.of(dir), List.of(), List.of(), false, registry).current();
         assertTrue(state.problems().get(0).startsWith("prefix registry skipped"), state.problems().toString());
     }
+
+    @Test
+    void theShapesFileIsNotLoadedAsAnOntology() throws IOException {
+        Files.writeString(dir.resolve("onto.ttl"), PREFIXES + "sosa:Sample a owl:Class .");
+        Path shapes = Files.writeString(dir.resolve("shapes.ttl"), """
+                @prefix sh: <http://www.w3.org/ns/shacl#> .
+                <https://example.org/shapes/S> a sh:NodeShape ; sh:targetClass <http://www.w3.org/ns/sosa/Sample> .
+                """);
+        Workspace.State state = new Workspace(List.of(dir), List.of(), List.of(shapes), false, null).current();
+        assertTrue(state.index().search("S", 10).contains("sosa:Sample"));
+        assertTrue(state.index().lookup("https://example.org/shapes/S").startsWith("Not found"));
+    }
+
+    @Test
+    void shapesInTheOntologiesAreNoTerms() throws IOException {
+        Files.writeString(dir.resolve("onto.ttl"), PREFIXES + """
+                @prefix sh: <http://www.w3.org/ns/shacl#> .
+                sosa:Sample a owl:Class .
+                sosa:SampleShape a sh:NodeShape ; sh:targetClass sosa:Sample .
+                """);
+        Workspace.State state = new Workspace(List.of(dir), List.of(), List.of(), false, null).current();
+        assertTrue(state.index().search("SampleShape", 10).startsWith("No terms found"));
+    }
 }
+

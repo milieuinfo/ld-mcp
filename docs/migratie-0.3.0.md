@@ -133,3 +133,19 @@ SSN/SOSA 2023 (`org/w3/www/ns/sosa/ssn-sosa_2023.ttl`) verklaart `sosa:Result ow
 beveelt `sosa:Result` aan voor lokale resultaten. Dat moet herbekeken worden (bv. enkel
 `qudt:QuantityValue`, of de status van `sosa:Result` in de definitieve editie nagaan). Tot dan is de
 melding terecht en, als ze bewust blijft staan, te vermelden in de bespreking (§6).
+
+## 3.7 Vocabularium-namespaces afgebakend
+
+Een vocabularium-namespace is nu een namespace waarin de ontologieën termen *declareren*: klassen,
+properties, datatypes, getypeerde individuen (eenheden, concepten). Niet meer: `owl:Ontology`-headers
+en SHACL-shapes (`sh:NodeShape`, `sh:PropertyShape`, `sh:Shape`), die ook uit `search_terms`
+verdwijnen. "Gedeclareerd" omvat naast een type en `subClassOf`/`subPropertyOf`/`domain`/`range`
+ook `owl:equivalentClass`, `owl:equivalentProperty`, `owl:disjointWith`, `owl:disjointUnionOf` en
+`owl:inverseOf` (ook voor 3.4). De `--shapes`-bestanden worden niet meer als ontologie geladen,
+ook niet als ze onder `--ontologies` staan.
+
+Beperking (D5): een *getypeerd* voorbeeldindividu in de ontologiemap maakt zijn namespace nog altijd
+tot vocabularium-namespace. Houd voorbeelddata buiten `--ontologies`.
+
+**Golden-diff:** geen. (In OSLOthema-SSNSOSA-VL staat `generated-shapes.ttl` onder
+`src/main/resources`; zijn shapes tellen nu niet meer als termen.)
