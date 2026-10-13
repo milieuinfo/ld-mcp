@@ -355,7 +355,7 @@ public final class DataValidator {
                     : e.severity() == Severity.Warning ? Certainty.SUSPECT : Certainty.HINT;
             findings.add(new Finding(certainty, "shacl", data.shortForm(e.focusNode().toString()),
                     e.resultPath() == null ? null : shorten(data, e.resultPath().toString()),
-                    e.message(), List.of(), severity));
+                    withValue(e, data), List.of(), severity));
         });
         findings.sort(Comparator.comparing(TextReport::shaclLine));
         return new Step(Kind.SHACL, Status.FINDINGS, findings, stats);
@@ -415,6 +415,26 @@ public final class DataValidator {
         }
         return Map.of("shapes", targetShapes, "applied", applied, "focusNodes", focus.size(),
                 "graph", SHACL_GRAPH);
+    }
+
+    /** Components whose results are about one value, which a custom sh:message does not name. */
+    private static final Set<String> VALUE_COMPONENTS = Set.of("ClassConstraintComponent",
+            "DatatypeConstraintComponent", "NodeKindConstraintComponent", "OrConstraintComponent",
+            "InConstraintComponent", "PatternConstraintComponent");
+
+    /** The message, followed by the offending value where the message does not name it. */
+    private static String withValue(ReportEntry e, Model data) {
+        String message = e.message();
+        Node value = e.value();
+        Node component = e.sourceConstraintComponent();
+        if (value == null || value.equals(e.focusNode()) || component == null || !component.isURI()
+                || !VALUE_COMPONENTS.contains(component.getLocalName())) {
+            return message;
+        }
+        String shown = value.isURI() ? data.shortForm(value.getURI()) : value.isLiteral()
+                ? "\"" + Untrusted.literal(value.getLiteralLexicalForm()) + "\"" : "[blank node]";
+        return message.contains(shown) || value.isURI() && message.contains(value.getURI())
+                ? message : message + " (value: " + shown + ")";
     }
 
     /** "violation", "warning" or "info"; for a custom severity, its local name in lower case. */

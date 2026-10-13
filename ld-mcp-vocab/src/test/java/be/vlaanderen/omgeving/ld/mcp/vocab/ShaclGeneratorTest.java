@@ -1,5 +1,6 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
@@ -26,9 +27,13 @@ class ShaclGeneratorTest {
         return m;
     }
 
-    /** Compares the generated shapes with the expected ones, regardless of blank node labels. */
+    /**
+     * Compares the generated shapes with the expected ones, regardless of blank node labels and
+     * without the messages (tested apart).
+     */
     private static void assertShapes(String ontology, String expected) {
         Model actual = ShaclGenerator.generate(parse(ontology));
+        actual.removeAll(null, actual.createProperty(ShaclGenerator.SH + "message"), null);
         StringWriter out = new StringWriter();
         actual.write(out, "TTL");
         assertTrue(actual.isIsomorphicWith(parse(expected)), out.toString());
@@ -81,4 +86,22 @@ class ShaclGeneratorTest {
                                   sh:minCount "1"^^xsd:long ; sh:maxCount "1"^^xsd:long ] .
                 """);
     }
+
+    @Test
+    void everyPropertyShapeHasAReadableMessage() {
+        Model shapes = ShaclGenerator.generate(parse("""
+                ex:A a owl:Class ; rdfs:subClassOf
+                    [ a owl:Restriction ; owl:onProperty ex:p ; owl:someValuesFrom ex:B ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:p ; owl:maxCardinality 1 ] ,
+                    [ a owl:Restriction ; owl:onProperty [ owl:inverseOf ex:q ] ;
+                      owl:allValuesFrom [ owl:unionOf ( ex:B xsd:string ) ] ] .
+                """));
+        java.util.List<String> messages = shapes.listObjectsOfProperty(shapes.createProperty(ShaclGenerator.SH + "message"))
+                .mapWith(n -> n.asLiteral().getLexicalForm()).toList().stream().sorted().toList();
+        assertEquals(java.util.List.of(
+                "ex:A: ^ex:q needs every value is one of (literal of xsd:string, ex:B) (generated from the OWL restrictions)",
+                "ex:A: ex:p needs at least 1 value(s) that is a ex:B (generated from the OWL restrictions)",
+                "ex:A: ex:p needs at most 1 value(s) (generated from the OWL restrictions)"), messages);
+    }
 }
+

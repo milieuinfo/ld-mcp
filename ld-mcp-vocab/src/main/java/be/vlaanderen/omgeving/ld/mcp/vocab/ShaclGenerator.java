@@ -231,7 +231,7 @@ public final class ShaclGenerator {
             }
 
             List<Resource> shapes = new ArrayList<>();
-            groups.values().forEach(g -> shapes.addAll(propertyShapes(g)));
+            groups.values().forEach(g -> shapes.addAll(propertyShapes(cls, g)));
             if (shapes.isEmpty()) {
                 return; // a node shape without constraints would only inflate the counts
             }
@@ -325,7 +325,7 @@ public final class ShaclGenerator {
         }
 
         /** The property shapes of one path: one for the plain constraints, one per qualified one. */
-        List<Resource> propertyShapes(PathGroup g) {
+        List<Resource> propertyShapes(Resource cls, PathGroup g) {
             PathGroup plain = g;
             Set<Qualified> qualified = new LinkedHashSet<>(g.qualified);
             if (!g.relaxed) {
@@ -348,6 +348,16 @@ public final class ShaclGenerator {
                     ps.addLiteral(sh("maxCount"), (long) g.max);
                 }
                 g.hasValues.forEach(v -> ps.addProperty(sh("hasValue"), v));
+                List<String> rules = new ArrayList<>();
+                g.allValues.forEach(v -> rules.add("every value " + says(v)));
+                if (g.min != null) {
+                    rules.add("at least " + g.min + " value(s)");
+                }
+                if (g.max != null) {
+                    rules.add("at most " + g.max + " value(s)");
+                }
+                g.hasValues.forEach(v -> rules.add("the value " + show(v)));
+                message(ps, cls, g.onProperty, rules);
                 out.add(ps);
             }
             for (Qualified q : qualified) {
@@ -361,9 +371,36 @@ public final class ShaclGenerator {
                 if (q.max() != null) {
                     ps.addLiteral(sh("qualifiedMaxCount"), (long) q.max());
                 }
+                List<String> rules = new ArrayList<>();
+                if (q.min() != null) {
+                    rules.add("at least " + q.min() + " value(s) that " + says(q.value()));
+                }
+                if (q.max() != null) {
+                    rules.add("at most " + q.max() + " value(s) that " + says(q.value()));
+                }
+                message(ps, cls, g.onProperty, rules);
                 out.add(ps);
             }
             return out;
+        }
+
+        /** A readable message: Jena's own texts ("QualifiedValueShape[1,_,false] …") say little. */
+        void message(Resource ps, Resource cls, Resource onProp, List<String> rules) {
+            String path = onProp.isAnon() ? "^" + show(onProp.getPropertyResourceValue(OWL.inverseOf)) : show(onProp);
+            ps.addProperty(sh("message"), show(cls) + ": " + path + " needs " + String.join("; ", rules)
+                    + " (generated from the OWL restrictions)");
+        }
+
+        /** What a value constraint asks, as a verb phrase: "is a sosa:Sensor". */
+        String says(Value v) {
+            return switch (v) {
+                case Value.Class c -> "is a " + show(c.uri());
+                case Value.Datatype d -> "is a literal of " + show(d.uri());
+                case Value.AnyLiteral l -> "is a literal";
+                case Value.Or or -> "is one of (" + String.join(", ", or.members().stream()
+                        .map(m -> says(m).replaceFirst("^is (a )?", "")).toList()) + ")";
+                case Value.Anything a -> "exists";
+            };
         }
 
         Resource propertyShape(Resource onProp) {

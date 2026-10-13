@@ -202,3 +202,15 @@ restriction(s) not translated)`; het serverlog lijst ze op, en het gestructureer
 wordt, en claimt geen pariteit met `OwlToShaclGenerator` meer (D4).
 
 **Golden-diff:** geen (enkel de configuratieregel, die de golden suite weglaat).
+
+## 3.11 Eigen shape-IRI's en `sh:message`
+
+Gegenereerde node shapes heten `urn:x-ld-mcp:shape:<geëncodeerd klasse-IRI>` in plaats van
+`<klasse>Shape` (dat munte IRI's als `sosa:ObservationShape` in andermans namespace). Elke
+gegenereerde property shape heeft een `sh:message`, bv. `sosa:FeatureOfInterest:
+sosa:isFeatureOfInterestOf needs at least 1 value(s) that is one of (sosa:Deployment, sosa:Execution,
+sosa:ExecutionCollection) (generated from the OWL restrictions)`. Bij een melding over één waarde
+(`sh:class`, `sh:datatype`, `sh:nodeKind`, `sh:or`, `sh:in`, `sh:pattern`) voegt het rapport de waarde
+toe als het bericht ze niet noemt: `… (value: ex:x)`.
+
+**Golden-diff:** enkel de berichttekst van de 93 gegenereerde meldingen (waterlopen, r-factor).
