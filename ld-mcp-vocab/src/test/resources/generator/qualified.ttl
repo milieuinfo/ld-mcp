@@ -1,0 +1,17 @@
+# Qualified cardinalities and owl:hasValue (plan 3.9, review K4).
+@prefix ex:   <https://example.org/voc/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Part a owl:Class . ex:Bad a owl:Class .
+ex:Machine a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ;
+                      owl:minQualifiedCardinality "2"^^xsd:nonNegativeInteger ; owl:onClass ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ;
+                      owl:maxQualifiedCardinality "0"^^xsd:nonNegativeInteger ; owl:onClass ex:Bad ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:code ;
+                      owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ; owl:onDataRange xsd:string ] .
+ex:Final a owl:Class .
+ex:Report a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:status ; owl:hasValue ex:final ] .

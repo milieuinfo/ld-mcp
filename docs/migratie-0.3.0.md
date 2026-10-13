@@ -159,3 +159,35 @@ elke correcte waarde faalde. `rdfs:Literal` wordt `sh:nodeKind sh:Literal`; `owl
 `rdfs:Resource` (ook als lid van een `owl:unionOf`) leggen niets op.
 
 **Golden-diff:** geen.
+
+## 3.9 Generator: someValuesFrom, gekwalificeerde cardinaliteit, hasValue, intersectionOf
+
+| OWL | Vroeger | Nu |
+|---|---|---|
+| `owl:someValuesFrom C` | `sh:class C` op *alle* waarden + `sh:minCount 1` | minstens één waarde is een C: eigen property shape met `sh:qualifiedValueShape [ sh:class C ] ; sh:qualifiedMinCount 1` |
+| `owl:someValuesFrom C` + `owl:allValuesFrom D` | samengevoegd tot "alle waarden C én D" | beide apart |
+| `owl:someValuesFrom owl:Thing` | `sh:class owl:Thing` | `sh:minCount 1` |
+| `owl:(min\|max)QualifiedCardinality`, `owl:qualifiedCardinality` (`onClass`/`onDataRange`) | niet vertaald | `sh:qualifiedValueShape` + `sh:qualifiedMinCount`/`sh:qualifiedMaxCount` |
+| `owl:hasValue` | niet vertaald | `sh:hasValue` |
+| restricties in `owl:intersectionOf` (ook binnen `owl:equivalentClass`) | niet vertaald | per lid vertaald |
+| klassen die enkel `rdfs:Class` zijn | geen shape | wel |
+| `owl:unionOf` met een anoniem lid | lid weggelaten (strengere `sh:or`, of een lege `sh:or ()` die altijd faalt) | niet vertaald (gemeld, 3.10) |
+| klasse zonder vertaalbare restrictie | lege node shape | geen node shape |
+
+**Beslispunt: de `minCardinality 0`-conventie (B6).** Vroeger hief `owl:minCardinality 0` enkel de
+verplichting op, en bleef `sh:class C` op alle waarden staan (∃p.C + min 0 werd ∀p.C). Nu valt de
+existentiële restrictie helemaal weg: er is geen verplichting, en ook geen klassecontrole op de
+waarden. Dat volgt de beschrijving in `waterkwaliteit.ttl` ("een someValuesFrom op dezelfde property
+wordt niet verplicht") en de daar gebruikte regel "wie een klassecontrole wil, gebruikt
+`owl:allValuesFrom`". Gevolg voor `wk:Emissie`: `prov:wasGeneratedBy`, `sosa:isResultOf` en
+`prov:wasDerivedFrom` worden niet meer op klasse gecontroleerd. Wie dat wel wil: een
+`owl:allValuesFrom` toevoegen. (Alternatief, niet gekozen: "als er waarden zijn, is er minstens één
+een C", met `sh:or ( [sh:maxCount 0] [qualified ≥ 1] )`.)
+
+Identieke restricties (dezelfde restrictie twee keer in een bestand, of in twee bestanden die de klasse
+definiëren) geven één constraint. SSN/SOSA 2023 herhaalt de restricties op `sosa:FeatureOfInterest`,
+en de samengevoegde kopie in OSLOthema-SSNSOSA-VL nog eens.
+
+**Golden-diff:** geen andere aantallen. De dekking telt minder shapes (439 → 170: lege node shapes
+verdwijnen; `nace2008`/`nace2025` zeggen nu "no shape applies"). De 91 meldingen in
+`waterlopen_meetplaatsen` zijn nu `QualifiedValueShape` in plaats van `minCount`.

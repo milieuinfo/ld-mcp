@@ -11,7 +11,7 @@ Validation: src/main/input/waterkwaliteit/nieuw_model/oppervlaktewater_concentra
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 28 warning(s) (38 of 439 shapes applied to 63 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 28 warning(s) (25 of 170 shapes applied to 60 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1067  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1067  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1131  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

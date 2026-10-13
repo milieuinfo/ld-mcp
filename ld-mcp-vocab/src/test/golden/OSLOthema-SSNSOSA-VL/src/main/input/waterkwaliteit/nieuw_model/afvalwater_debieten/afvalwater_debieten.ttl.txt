@@ -7,7 +7,7 @@ Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalw
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s) (35 of 439 shapes applied to 20 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 4 warning(s) (22 of 170 shapes applied to 14 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400007-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

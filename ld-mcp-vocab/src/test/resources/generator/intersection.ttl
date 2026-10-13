@@ -1,0 +1,15 @@
+# Restrictions inside owl:intersectionOf, also within owl:equivalentClass, and classes that are only
+# rdfs:Class (plan 3.9, review K4).
+@prefix ex:   <https://example.org/voc/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Base a owl:Class .
+ex:Defined a owl:Class ;
+    owl:equivalentClass [ a owl:Class ; owl:intersectionOf ( ex:Base
+        [ a owl:Restriction ; owl:onProperty ex:p ; owl:minCardinality 1 ] ) ] .
+ex:Capped a owl:Class ;
+    rdfs:subClassOf [ owl:intersectionOf (
+        [ a owl:Restriction ; owl:onProperty ex:q ; owl:maxCardinality 1 ] ex:Base ) ] .
+ex:Plain a rdfs:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:r ; owl:cardinality 1 ] .

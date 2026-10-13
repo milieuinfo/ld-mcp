@@ -6,4 +6,4 @@ Validation: src/main/input/erosiepoel/erosiepoel.ttl (36 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (29 of 439 shapes applied to 8 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (21 of 170 shapes applied to 8 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

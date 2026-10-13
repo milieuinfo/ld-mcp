@@ -6,4 +6,4 @@ Validation: src/main/input/waterkwaliteit/nacebel/nace2025.ttl (36 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (1 of 439 shapes applied to 1 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] no shape applies to this data (170 shapes loaded; graph: asserted data + class hierarchy + types of referenced terms)

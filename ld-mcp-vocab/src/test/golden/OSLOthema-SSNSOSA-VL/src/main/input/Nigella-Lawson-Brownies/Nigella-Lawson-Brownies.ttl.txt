@@ -7,4 +7,4 @@ Validation: src/main/input/Nigella-Lawson-Brownies/Nigella-Lawson-Brownies.ttl (
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (39 of 439 shapes applied to 84 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (22 of 170 shapes applied to 52 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

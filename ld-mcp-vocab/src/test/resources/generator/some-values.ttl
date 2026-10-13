@@ -1,0 +1,21 @@
+# owl:someValuesFrom: at least one value is a C; other values may be anything (plan 3.9, review K3).
+# Next to an owl:allValuesFrom on the same property: both hold, separately.
+@prefix ex:   <https://example.org/voc/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Part a owl:Class . ex:Ghost a owl:Class . ex:Named a owl:Class .
+ex:Whole a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] .
+ex:Strict a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ; owl:allValuesFrom ex:Named ] .
+ex:Relaxed a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ; owl:minCardinality 0 ] .
+ex:Something a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom owl:Thing ] .
+# The same restriction twice (as in SSN/SOSA 2023 and a merged copy of it) gives one constraint.
+ex:Twice a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] .

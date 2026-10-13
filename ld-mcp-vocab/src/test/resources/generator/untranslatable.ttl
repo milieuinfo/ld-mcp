@@ -1,0 +1,15 @@
+# What cannot be translated is skipped, never made stricter, and reported (plans 3.9 and 3.10).
+@prefix ex:   <https://example.org/voc/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:A a owl:Class . ex:X a owl:Class .
+ex:Odd a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:mixed ;
+                      owl:allValuesFrom [ owl:unionOf ( ex:A [ a owl:Restriction ; owl:onProperty ex:z ; owl:hasValue ex:v ] ) ] ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:anon ;
+                      owl:allValuesFrom [ owl:unionOf ( [ owl:complementOf ex:X ] ) ] ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:empty ; owl:allValuesFrom [ owl:unionOf () ] ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:not ; owl:allValuesFrom [ owl:complementOf ex:X ] ] ,
+                    [ a owl:Restriction ; owl:onProperty [ owl:propertyChainAxiom ( ex:a ex:b ) ] ; owl:minCardinality 1 ] ,
+                    [ owl:complementOf ex:X ] .

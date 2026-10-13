@@ -7,7 +7,7 @@ Validation: src/main/input/paleo/paleo_atmosfeer_alt.ttl (87 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 5 warning(s) (30 of 439 shapes applied to 18 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 5 warning(s) (22 of 170 shapes applied to 16 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:C14Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:C14Observatie  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:CO2Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

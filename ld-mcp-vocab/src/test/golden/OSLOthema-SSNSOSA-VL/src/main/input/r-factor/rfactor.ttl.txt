@@ -6,6 +6,6 @@ Validation: src/main/input/r-factor/rfactor.ttl (2939 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 2 violation(s) (41 of 439 shapes applied to 763 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 2 violation(s) (27 of 170 shapes applied to 464 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - ex:unit-rfactor  path: qudt:hasDimensionVector  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0
 - ex:unit-rfactor  path: qudt:hasQuantityKind  — minCount[1]: Invalid cardinality: expected min 1: Got count = 0

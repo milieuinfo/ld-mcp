@@ -7,4 +7,4 @@ Validation: src/main/input/elektrisch-raam/elektrisch-raam.ttl (262 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (36 of 439 shapes applied to 44 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (24 of 170 shapes applied to 38 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

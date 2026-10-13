@@ -184,8 +184,8 @@ class WorkspaceTest {
         Workspace.State state = new Workspace(List.of(dir), List.of(), List.of(shapes), true, null).current();
         assertTrue(state.problems().get(0).endsWith("; its shapes skipped"), state.problems().toString());
         Path data = Files.writeString(elsewhere.resolve("d.ttl"), DATA);
-        // The generated shapes are still there.
-        assertTrue(state.validator().validate(data.toString()).contains("[SHACL] conforms"));
+        // SHACL still runs, with the generated shapes (none here: the ontology has no restrictions).
+        assertTrue(state.validator().validate(data.toString()).contains("[SHACL] no shape applies"));
     }
 
     @Test

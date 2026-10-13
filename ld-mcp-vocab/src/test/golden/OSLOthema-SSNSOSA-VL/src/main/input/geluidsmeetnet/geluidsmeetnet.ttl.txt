@@ -7,5 +7,5 @@ Validation: src/main/input/geluidsmeetnet/geluidsmeetnet.ttl (5295 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 1 warning(s) (37 of 439 shapes applied to 971 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 1 warning(s) (27 of 170 shapes applied to 859 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:meetpost-M072  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).

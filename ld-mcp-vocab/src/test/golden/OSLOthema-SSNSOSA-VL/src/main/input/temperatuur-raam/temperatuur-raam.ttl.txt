@@ -7,4 +7,4 @@ Validation: src/main/input/temperatuur-raam/temperatuur-raam.ttl (138 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (36 of 439 shapes applied to 23 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (24 of 170 shapes applied to 21 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
