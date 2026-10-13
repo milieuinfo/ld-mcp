@@ -1,6 +1,7 @@
 package be.vlaanderen.omgeving.ld.mcp.vocab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -105,7 +106,8 @@ class DataValidatorTest {
                 unit:EUR a qudt:Unit .
                 """));
         assertTrue(out.contains("Resource minted in a vocabulary namespace: http://qudt.org/vocab/unit/EUR"), out);
-        assertTrue(out.contains("Unknown resource: http://qudt.org/vocab/unit/EUR"), out);
+        // Reported once: not again as an unknown resource where the data uses it.
+        assertFalse(out.contains("Unknown resource: http://qudt.org/vocab/unit/EUR"), out);
     }
 
     @Test
@@ -444,6 +446,66 @@ class DataValidatorTest {
                 """);
         String out = v.validate(data("ex:o qudt:hasUnit unit:M ."));
         assertTrue(out.contains("[SHACL] 1 violation(s)") && out.contains("unit:M  path: qudt:hasQuantityKind"), out);
+    }
+
+    private DataValidator validatorFor(String ontologyTtl) {
+        Model ontology = ModelFactory.createDefaultModel();
+        ontology.read(new StringReader(ontologyTtl), null, "TTL");
+        return new DataValidator(ontology, new VocabIndex(ontology), (Path) null, null, false, null);
+    }
+
+    private static final String ROLES = """
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+            @prefix voc:  <https://example.org/voc/> .
+            voc:Thing a owl:Class .
+            voc:part a owl:ObjectProperty ; rdfs:range voc:Ghost .
+            """;
+
+    @Test
+    void aTermThatIsOnlyReferencedIsNotDefined() throws IOException {
+        ValidationResult r = validatorFor(ROLES).check(Path.of(data("ex:a a voc:Ghost .")), "d");
+        ValidationResult.Finding f = r.steps().get(0).findings().get(0);
+        assertEquals("undefined-term", f.code());
+        assertEquals(ValidationResult.Certainty.SUSPECT, f.certainty());
+        assertEquals("Term only referenced, not defined: https://example.org/voc/Ghost", f.message());
+    }
+
+    @Test
+    void rolesAreChecked() throws IOException {
+        String out = validatorFor(ROLES).validate(data("ex:a a voc:part ; voc:Thing ex:b ."));
+        assertTrue(out.contains("[VOCAB] 2 error(s)"), out);
+        assertTrue(out.contains("- [error] Property used as class: https://example.org/voc/part"), out);
+        assertTrue(out.contains("- [error] Class used as property: https://example.org/voc/Thing"), out);
+    }
+
+    @Test
+    void builtInTermsAreKnownWithoutAnOntologyMentioningThem() throws IOException {
+        String out = validatorFor(ROLES).validate(data("""
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+                @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+                @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+                ex:a a voc:Thing , owl:NamedIndividual ; rdfs:label "a" ; rdfs:seeAlso ex:b ; owl:sameAs ex:c ;
+                     owl:differentFrom ex:d ; rdf:value 1 ; rdf:_3 ex:e .
+                """));
+        assertTrue(out.contains("[VOCAB] ok"), out);
+        String typo = validatorFor(ROLES).validate(data("""
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+                ex:a rdfs:lable "a" .
+                """));
+        assertTrue(typo.contains("Unknown property: http://www.w3.org/2000/01/rdf-schema#lable"), typo);
+    }
+
+    @Test
+    void lookupAndValidationAgree() throws IOException {
+        Model ontology = ModelFactory.createDefaultModel();
+        ontology.read(new StringReader(ROLES), null, "TTL");
+        VocabIndex index = new VocabIndex(ontology);
+        assertTrue(index.lookup("https://example.org/voc/Ghost").startsWith("Not found"), index.lookup("https://example.org/voc/Ghost"));
+        assertTrue(index.lookup("https://example.org/voc/Ghost").contains("mention it but do not declare it"));
+        assertTrue(index.lookup("http://www.w3.org/2000/01/rdf-schema#label").contains("built-in term"));
+        assertTrue(index.lookup("https://example.org/voc/Thing").startsWith("<https://example.org/voc/Thing>")
+                || index.lookup("https://example.org/voc/Thing").contains("owl:Class"));
     }
 }
 

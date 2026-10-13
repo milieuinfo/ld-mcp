@@ -223,17 +223,21 @@ public final class DataValidator {
                 .thenComparing(Comparator.naturalOrder()));
         data.listStatements().forEachRemaining(st -> {
             String p = st.getPredicate().getURI();
-            if (!ontology.containsResource(ontology.createResource(p))) {
-                unknown.put("Unknown property: " + p, "unknown-property");
+            if (!index.isKnown(p)) {
+                unknownOrUndefined(unknown, "property", p);
+            } else if (index.isClass(p) && !index.isProperty(p)) {
+                unknown.put("Class used as property: " + p, "class-used-as-property");
             }
             if (st.getPredicate().equals(RDF.type) && st.getObject().isURIResource()) {
                 String c = st.getObject().asResource().getURI();
-                if (!ontology.containsResource(ontology.createResource(c))) {
-                    unknown.put("Unknown class: " + c, "unknown-class");
+                if (!index.isKnown(c)) {
+                    unknownOrUndefined(unknown, "class", c);
+                } else if (index.isProperty(c) && !index.isClass(c)) {
+                    unknown.put("Property used as class: " + c, "property-used-as-class");
                 }
             } else if (st.getObject().isURIResource()
                     && (isUnknownInVocabulary(st.getResource()) || isNearVocabulary(st.getResource()))) {
-                unknown.put("Unknown resource: " + st.getResource().getURI(), "unknown-resource");
+                unknownOrUndefined(unknown, "resource", st.getResource().getURI());
             }
             if (st.getSubject().isURIResource()) {
                 if (isUnknownInVocabulary(st.getSubject())) {
@@ -244,20 +248,32 @@ public final class DataValidator {
                 }
             }
         });
+        // A minted resource is not reported once more as unknown where the data uses it.
+        Set<String> minted = new HashSet<>();
+        unknown.forEach((m, code) -> {
+            if (code.equals("minted-in-vocabulary-namespace")) {
+                minted.add(m.substring(m.indexOf(": ") + 2));
+            }
+        });
+        unknown.entrySet().removeIf(e -> !e.getValue().equals("minted-in-vocabulary-namespace")
+                && minted.contains(e.getKey().substring(e.getKey().indexOf(": ") + 2)));
         List<Finding> findings = new ArrayList<>();
         unknown.forEach((message, code) -> {
             String iri = message.substring(message.indexOf(": ") + 2);
-            Hint hint = nearMiss(iri);
+            boolean role = code.endsWith("-used-as-class") || code.endsWith("-used-as-property");
+            Hint hint = role ? null : nearMiss(iri);
             List<String> hints = new ArrayList<>();
             if (hint != null) {
                 hints.add(hint.text());
             }
-            if (hint == null || !hint.termExists()) {
+            if (!role && (hint == null || !hint.termExists())) {
                 // Suggestions from lookup_term: everything after the "Not found" line.
                 index.lookup(iri).lines().skip(1).forEach(hints::add);
             }
             // Established only where the namespace is loaded: there the term certainly does not exist.
-            Certainty certainty = code.startsWith("minted") ? Certainty.ERROR
+            Certainty certainty = code.startsWith("minted") || code.endsWith("-used-as-class")
+                    || code.endsWith("-used-as-property") ? Certainty.ERROR
+                    : code.equals("undefined-term") ? Certainty.SUSPECT
                     : hint != null ? hint.certainty()
                     : vocabularyNamespaces.contains(namespace(iri)) ? Certainty.ERROR : Certainty.SUSPECT;
             findings.add(new Finding(certainty, code, iri, null, message, hints, null));
@@ -455,9 +471,21 @@ public final class DataValidator {
         }
     }
 
-    /** An IRI in a namespace of the ontologies that the ontologies do not mention. */
+    /**
+     * Reports an IRI that is not known: "Unknown …" if the ontologies do not mention it at all, "Term
+     * only referenced, not defined" if they mention it without declaring it.
+     */
+    private void unknownOrUndefined(Map<String, String> unknown, String kind, String iri) {
+        if (index.isMentioned(iri)) {
+            unknown.put("Term only referenced, not defined: " + iri, "undefined-term");
+        } else {
+            unknown.put("Unknown " + kind + ": " + iri, "unknown-" + kind);
+        }
+    }
+
+    /** An IRI in a namespace of the ontologies that the ontologies do not declare. */
     private boolean isUnknownInVocabulary(Resource r) {
-        return vocabularyNamespaces.contains(namespace(r.getURI())) && !ontology.containsResource(r);
+        return vocabularyNamespaces.contains(namespace(r.getURI())) && !index.isKnown(r.getURI());
     }
 
     /**
@@ -466,7 +494,7 @@ public final class DataValidator {
      */
     private boolean isNearVocabulary(Resource r) {
         String iri = r.getURI();
-        if (vocabularyNamespaces.contains(namespace(iri)) || ontology.containsResource(r)) {
+        if (vocabularyNamespaces.contains(namespace(iri)) || index.isKnown(iri)) {
             return false;
         }
         return variants(iri).stream().anyMatch(v -> vocabularyNamespaces.contains(namespace(v)));
@@ -493,7 +521,7 @@ public final class DataValidator {
     private Hint nearMiss(String iri) {
         List<String> variants = variants(iri);
         for (String v : variants) {
-            if (ontology.containsResource(ontology.createResource(v))) {
+            if (index.isKnown(v)) {
                 return new Hint("Did you mean <" + v + ">? (differs only in " + difference(iri, v) + ")", true,
                         Certainty.SUSPECT);
             }

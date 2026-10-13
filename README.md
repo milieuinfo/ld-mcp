@@ -17,7 +17,7 @@ projects (e.g. OSLO themes). Each server runs locally as a process over **stdio*
 |---|---|
 | `lookup_term` | Describes one class, property or concept (type, label, definition, subClassOf/subPropertyOf, domain, range, inverseOf, SKOS mappings such as `broadMatch` to a QUDT unit, subterms). If the term does not exist, suggestions follow, e.g. `ssn:implements` → `sosa:implements`. |
 | `search_terms` | Finds classes, properties and named individuals (e.g. QUDT units) by local name or label (case-insensitive); exact matches first, so `metre` finds `unit:M`. |
-| `validate_file` | Validates an RDF data file: unknown properties, classes and other IRIs in a vocabulary namespace such as `unit:` (with suggestions from `lookup_term`, and hints for `http`/`https` and `#`/`/` near misses), resources minted by the data in a vocabulary namespace, rule inference (`--rules`), OWL consistency with OWLMiniReasoner on the `owl:disjointWith` subset (including `owl:AllDisjointClasses` and `owl:disjointUnionOf`, expanded into pairs), and SHACL (`--generate-shapes` and/or `--shapes`) on the original model. |
+| `validate_file` | Validates an RDF data file in four steps (see *Validation report*): unknown and undefined terms, wrong roles, and resources the data mints in a vocabulary namespace, each marked error, suspect or hint, with suggestions from `lookup_term` and hints for `http`/`https` and `#`/`/` near misses; rule inference (`--rules`); class disjointness with OWLMiniReasoner (`owl:disjointWith`, `owl:AllDisjointClasses`, `owl:disjointUnionOf`, following the class hierarchy); and SHACL (`--generate-shapes` and/or `--shapes`) on the data plus the class hierarchy and the types of referenced terms. |
 | `lov_search` | Searches [Linked Open Vocabularies](https://lov.linkeddata.es) for candidate terms (optionally only classes or properties) and marks which hits are already loaded. Starts with a warning: LOV ranks by text match, so a hit is a candidate to assess, never a recommendation. Uses the network. |
 | `vocabulary_profile` | Builds a fact sheet about a vocabulary (LOV prefix or namespace IRI) for deciding whether to reuse it: its LOV record (title, creators, publishers, licence, versions, declared relations, incoming reuse); whether the namespace and a sample term dereference to RDF for `text/turtle`, `application/rdf+xml` and `application/ld+json` (status, content type, triples, or "not RDF" / "only a JSON-LD `@context`"); and, from the RDF itself, `owl:versionIRI`/`versionInfo`, licence, classes and properties without label, definition, domain or range, `owl:deprecated` terms, links to the core namespaces inside the vocabulary, axioms about other vocabularies' terms and SKOS relations between classes. A section *Alignments* lists the modules from the register (`--alignments`) that connect the namespace, whether each is loaded, and the axioms between the vocabulary and the core in the loaded ontologies, from any file: an alignment may be published by neither vocabulary (e.g. the SOSA–SAREF alignment is a separate module of SSN/SOSA 2023). Facts only, no verdict. LOV records can lag behind (e.g. SAREF v3.1.1 in LOV against v4.1.1 live): the live checks are authoritative. When LOV cannot be reached, the LOV record says `unavailable` and the other sections still follow (give a namespace IRI then: a prefix needs LOV). Uses the network. |
 
@@ -123,13 +123,23 @@ How sure a `[VOCAB]` finding is:
 A *vocabulary namespace* is any namespace (IRI up to the last `#` or `/`) in which the ontologies
 define resources. Kinds of `[VOCAB]` findings:
 
+A term is *known* when the ontologies declare it (give it a type, or make it the subject of
+`rdfs:subClassOf`, `rdfs:subPropertyOf`, `rdfs:domain` or `rdfs:range`), or when it is a term of
+RDF, RDFS, OWL 2 or XSD (always known, whether or not a loaded ontology mentions it; the list comes
+from Jena, so `rdfs:lable` is still unknown). `lookup_term` uses the same definition.
+
 - `Unknown property` / `Unknown class`: a predicate or `rdf:type` object that the ontologies do
   not mention;
 - `Unknown resource`: any other IRI in a vocabulary namespace that the ontologies do not mention,
   e.g. a misspelt unit such as `unit:Meter` (the metre is `unit:M`), or an IRI in a near miss of a
   vocabulary namespace (see below);
+- `Term only referenced, not defined` (suspect): the ontologies mention the IRI, e.g. as the range
+  of a property, but never declare it;
+- `Property used as class` / `Class used as property` (error): an `rdf:type` object that is
+  declared only as a property, or a predicate declared only as a class;
 - `Resource minted in a vocabulary namespace`: the data file describes a resource of its own in
-  someone else's namespace, e.g. `unit:EUR a qudt:Unit`.
+  someone else's namespace, e.g. `unit:EUR a qudt:Unit` (reported once, not again as unknown where
+  the data uses it).
 
 Near misses get a hint. If an unknown IRI differs from a known term only in the scheme
 (`https` instead of `http`, common because many sites redirect to `https` while the `http` IRI

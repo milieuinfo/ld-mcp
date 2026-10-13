@@ -35,6 +35,11 @@ public final class VocabIndex {
             RDFS.Class, OWL.Class, RDF.Property,
             OWL.ObjectProperty, OWL.DatatypeProperty, OWL.AnnotationProperty);
 
+    private static final Set<Resource> CLASS_TYPES = Set.of(RDFS.Class, OWL.Class, RDFS.Datatype);
+    private static final Set<Resource> PROPERTY_TYPES = Set.of(RDF.Property, OWL.ObjectProperty,
+            OWL.DatatypeProperty, OWL.AnnotationProperty, OWL.FunctionalProperty, OWL.InverseFunctionalProperty,
+            OWL.TransitiveProperty, OWL.SymmetricProperty);
+
     private final Model model;
     /** All terms, sorted by IRI, computed once. */
     private final List<Resource> terms;
@@ -89,12 +94,62 @@ public final class VocabIndex {
      * Tells whether a term is in the index.
      *
      * @param iri the full IRI of the term
-     * @return whether the loaded ontologies declare or describe the term
+     * @return whether the loaded ontologies declare the term (give it a type, or make it the
+     *         subject of {@code subClassOf}, {@code subPropertyOf}, {@code domain} or {@code range})
      */
     public boolean contains(String iri) {
         int i = Collections.binarySearch(terms, ResourceFactory.createResource(iri),
                 Comparator.comparing(Resource::getURI));
         return i >= 0;
+    }
+
+    /**
+     * Tells whether a term is known: declared in the loaded ontologies, or a built-in term of RDF,
+     * RDFS, OWL or XSD. The one definition that {@code lookup_term} and {@code validate_file} share.
+     *
+     * @param iri the full IRI of the term
+     * @return whether the term is known
+     */
+    public boolean isKnown(String iri) {
+        return contains(iri) || BuiltIns.isBuiltIn(iri);
+    }
+
+    /**
+     * Tells whether the loaded ontologies mention an IRI at all, also when they do not declare it
+     * (e.g. only as the object of {@code rdfs:range}).
+     *
+     * @param iri the full IRI
+     * @return whether it occurs in a triple of the ontologies
+     */
+    public boolean isMentioned(String iri) {
+        return model.containsResource(model.createResource(iri));
+    }
+
+    /**
+     * Tells whether a term is a class: typed as one, or the subject of {@code rdfs:subClassOf}, or a
+     * built-in class.
+     *
+     * @param iri the full IRI
+     * @return whether it is declared as a class
+     */
+    public boolean isClass(String iri) {
+        Resource r = model.createResource(iri);
+        return CLASS_TYPES.stream().anyMatch(t -> model.contains(r, RDF.type, t))
+                || model.contains(r, RDFS.subClassOf) || BuiltIns.isBuiltInClass(iri);
+    }
+
+    /**
+     * Tells whether a term is a property: typed as one, or the subject of {@code subPropertyOf},
+     * {@code domain} or {@code range}, or a built-in property.
+     *
+     * @param iri the full IRI
+     * @return whether it is declared as a property
+     */
+    public boolean isProperty(String iri) {
+        Resource r = model.createResource(iri);
+        return PROPERTY_TYPES.stream().anyMatch(t -> model.contains(r, RDF.type, t))
+                || model.contains(r, RDFS.subPropertyOf) || model.contains(r, RDFS.domain)
+                || model.contains(r, RDFS.range) || BuiltIns.isBuiltInProperty(iri);
     }
 
     /**
@@ -111,8 +166,14 @@ public final class VocabIndex {
     public String lookup(String term) {
         String iri = expand(term);
         Resource r = model.createResource(iri);
-        if (!model.containsResource(r) || !model.listStatements(r, null, (RDFNode) null).hasNext()) {
-            return notFound(term, iri);
+        if (!contains(iri)) {
+            if (BuiltIns.isBuiltIn(iri) && !model.listStatements(r, null, (RDFNode) null).hasNext()) {
+                return shortForm(iri) + "  <" + iri + ">\n  built-in term of RDF, RDFS, OWL or XSD; "
+                        + "the loaded ontologies do not describe it\n";
+            }
+            if (!BuiltIns.isBuiltIn(iri)) {
+                return notFound(term, iri);
+            }
         }
 
         StringBuilder sb = new StringBuilder();
@@ -187,6 +248,18 @@ public final class VocabIndex {
             sb.append("  <").append(iri).append(">");
         }
         sb.append('\n');
+        Resource r = model.createResource(iri);
+        if (model.containsResource(r)) {
+            List<String> where = new ArrayList<>();
+            model.listStatements(null, null, r).forEachRemaining(st -> where.add(
+                    render(st.getSubject()) + " " + render(st.getPredicate()) + " " + shortForm(iri)));
+            model.listStatements(r, null, (RDFNode) null).forEachRemaining(st -> where.add(
+                    shortForm(iri) + " " + render(st.getPredicate()) + " " + render(st.getObject())));
+            sb.append("The loaded ontologies mention it but do not declare it (no type, no subClassOf, "
+                    + "subPropertyOf, domain or range): ")
+                    .append(String.join("; ", where.stream().sorted().limit(3).toList()))
+                    .append(where.size() > 3 ? "; …" : "").append('\n');
+        }
         if (!sameLocal.isEmpty()) {
             sb.append("Same local name in another namespace: ")
                     .append(String.join(", ", sameLocal)).append('\n');

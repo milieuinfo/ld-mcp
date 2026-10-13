@@ -86,3 +86,16 @@ geasserteerd, en enkel over knopen die de data niet zelf beschrijft.
 - Kit: de alinea "SHACL validates the non-inferred graph … type the superclasses explicitly" klopt
   niet meer. Voortaan: de klassehiërarchie en de types van verwezen termen tellen mee; afgeleide
   types (domain/range uit `--rules`) niet.
+
+## 3.4 "Bekend" is gedefinieerd; rolcontrole
+
+Een term is bekend als de ontologieën hem declareren (type, of onderwerp van `subClassOf`,
+`subPropertyOf`, `domain`, `range`), of als het een term van RDF, RDFS, OWL 2 of XSD is (lijst uit
+Jena). Vroeger volstond dat het IRI ergens in de ontologieën voorkwam. Nieuwe meldingen:
+`Term only referenced, not defined` (suspect), `Property used as class` en `Class used as property`
+(error). `lookup_term` gebruikt dezelfde definitie: een term die enkel vermeld wordt, is "Not found",
+met de vermelding erbij; een ingebouwde term heet "built-in". Een gemunte resource wordt nog maar
+één keer gemeld (niet ook als `Unknown resource` waar de data hem gebruikt).
+
+**Golden-diff:** enkel die ontdubbeling (`gebouw#stadskantoor`, `gebouw#fabriek_kortrijk` in de
+EMS-herzieningen: één fout minder per bestand). Geen onbepaalde termen of rolfouten in de voorbeelden.
