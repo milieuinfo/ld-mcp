@@ -11,14 +11,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
+import org.apache.jena.datatypes.BaseDatatype;
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.compose.Union;
 import org.apache.jena.rdf.model.InfModel;
+import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -44,6 +49,7 @@ import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+import org.apache.jena.vocabulary.XSD;
 
 import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
 import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Certainty;
@@ -239,6 +245,9 @@ public final class DataValidator {
                     && (isUnknownInVocabulary(st.getResource()) || isNearVocabulary(st.getResource()))) {
                 unknownOrUndefined(unknown, "resource", st.getResource().getURI());
             }
+            if (st.getObject().isLiteral()) {
+                checkLiteral(st.getObject().asLiteral(), unknown);
+            }
             if (st.getSubject().isURIResource()) {
                 if (isUnknownInVocabulary(st.getSubject())) {
                     unknown.put("Resource minted in a vocabulary namespace: " + st.getSubject().getURI(),
@@ -260,13 +269,16 @@ public final class DataValidator {
         List<Finding> findings = new ArrayList<>();
         unknown.forEach((message, code) -> {
             String iri = message.substring(message.indexOf(": ") + 2);
-            boolean role = code.endsWith("-used-as-class") || code.endsWith("-used-as-property");
+            boolean role = code.endsWith("-used-as-class") || code.endsWith("-used-as-property")
+                    || code.equals("invalid-literal") || code.equals("not-a-datatype");
             Hint hint = role ? null : nearMiss(iri);
             List<String> hints = new ArrayList<>();
             if (hint != null) {
                 hints.add(hint.text());
             }
-            if (!role && (hint == null || !hint.termExists())) {
+            if (code.equals("unknown-datatype") && hint == null) {
+                similarDatatypes(iri).ifPresent(hints::add);
+            } else if (!role && (hint == null || !hint.termExists())) {
                 // Suggestions from lookup_term: everything after the "Not found" line.
                 index.lookup(iri).lines().skip(1).forEach(hints::add);
             }
@@ -274,6 +286,8 @@ public final class DataValidator {
             Certainty certainty = code.startsWith("minted") || code.endsWith("-used-as-class")
                     || code.endsWith("-used-as-property") ? Certainty.ERROR
                     : code.equals("undefined-term") ? Certainty.SUSPECT
+                    : code.equals("not-a-datatype") || code.equals("invalid-literal") ? Certainty.ERROR
+                    : code.equals("unknown-datatype") ? datatypeCertainty(iri)
                     : hint != null ? hint.certainty()
                     : vocabularyNamespaces.contains(namespace(iri)) ? Certainty.ERROR : Certainty.SUSPECT;
             findings.add(new Finding(certainty, code, iri, null, message, hints, null));
@@ -468,6 +482,84 @@ public final class DataValidator {
             for (int j = i + 1; j < members.size(); j++) {
                 subset.add(members.get(i), OWL.disjointWith, members.get(j));
             }
+        }
+    }
+
+    /**
+     * The datatype if Jena implements it; {@code null} for none, and for the plain
+     * {@link BaseDatatype} that the parser registers for every datatype IRI it meets (also for
+     * {@code xsd:dateTim}), which knows nothing about the datatype.
+     */
+    private static RDFDatatype implemented(RDFDatatype t) {
+        return t == null || t.getClass() == BaseDatatype.class ? null : t;
+    }
+
+    /** An unknown datatype in XSD, RDF or a loaded namespace certainly does not exist. */
+    private Certainty datatypeCertainty(String iri) {
+        String ns = namespace(iri);
+        return ns.equals(XSD.NS) || ns.equals(RDF.uri) || vocabularyNamespaces.contains(ns)
+                ? Certainty.ERROR : Certainty.SUSPECT;
+    }
+
+    /** Datatypes whose IRI differs from the given one in at most two characters, e.g. xsd:dateTime. */
+    private Optional<String> similarDatatypes(String iri) {
+        List<String> candidates = new ArrayList<>();
+        TypeMapper.getInstance().listTypes().forEachRemaining(t -> {
+            if (t.getURI() != null && implemented(t) != null && !t.getURI().equals(iri)) {
+                candidates.add(t.getURI());
+            }
+        });
+        ontology.listSubjectsWithProperty(RDF.type, RDFS.Datatype).filterKeep(Resource::isURIResource)
+                .forEachRemaining(r -> candidates.add(r.getURI()));
+        List<String> close = candidates.stream().distinct()
+                .filter(c -> namespace(c).equals(namespace(iri)) && distance(c, iri) <= 2)
+                .sorted().limit(3).toList();
+        return close.isEmpty() ? Optional.empty()
+                : Optional.of("Did you mean " + String.join(", ", close.stream().map(c -> "<" + c + ">").toList()) + "?");
+    }
+
+    /** Levenshtein distance. */
+    static int distance(String a, String b) {
+        int[] prev = new int[b.length() + 1];
+        int[] cur = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            prev[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            cur[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                cur[j] = Math.min(Math.min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            int[] t = prev;
+            prev = cur;
+            cur = t;
+        }
+        return prev[b.length()];
+    }
+
+    /**
+     * Checks the datatype of a literal and its lexical form: an unknown datatype, a known term that
+     * is no datatype (e.g. a unit), or a lexical form that is not valid for the datatype.
+     */
+    private void checkLiteral(Literal literal, Map<String, String> unknown) {
+        String dt = literal.getDatatypeURI();
+        if (dt == null || dt.equals(RDF.langString.getURI())) {
+            return;
+        }
+        RDFDatatype known = implemented(TypeMapper.getInstance().getTypeByName(dt));
+        boolean declared = ontology.contains(ontology.createResource(dt), RDF.type, RDFS.Datatype);
+        if (known == null && !declared) {
+            if (index.isKnown(dt) || index.isMentioned(dt)) {
+                unknown.put("Not a datatype: " + dt, "not-a-datatype");
+            } else {
+                unknown.put("Unknown datatype: " + dt, "unknown-datatype");
+            }
+            return;
+        }
+        if (known != null && !known.isValid(literal.getLexicalForm())) {
+            unknown.put("Invalid literal: \"" + Untrusted.literal(literal.getLexicalForm()) + "\"^^" + dt,
+                    "invalid-literal");
         }
     }
 

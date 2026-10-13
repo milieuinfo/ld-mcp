@@ -99,3 +99,23 @@ met de vermelding erbij; een ingebouwde term heet "built-in". Een gemunte resour
 
 **Golden-diff:** enkel die ontdubbeling (`gebouw#stadskantoor`, `gebouw#fabriek_kortrijk` in de
 EMS-herzieningen: één fout minder per bestand). Geen onbepaalde termen of rolfouten in de voorbeelden.
+
+## 3.5 Datatypes en literals
+
+Datatype-IRI's worden getoetst aan de datatypes die Jena implementeert plus de `rdfs:Datatype`s uit de
+ontologieën. Let op: Jena's parser registreert elk datatype-IRI dat hij tegenkomt als een lege
+`BaseDatatype`; die tellen niet als bekend. Nieuwe meldingen:
+- `Unknown datatype` — error in `xsd:`, `rdf:` of een geladen namespace, met een suggestie
+  (`xsd:strin` → `xsd:string`); anders suspect;
+- `Not a datatype` (error) — een bekende term die geen datatype is (een eenheid, een property);
+- `Invalid literal` (error) — de lexicale vorm past niet bij het datatype (`"not a date"^^xsd:dateTime`);
+  vroeger enkel een WARN op stderr.
+
+**Golden-diff** (echte bevindingen):
+- `waterkwaliteit/waterlopen/waterlopen_meetplaatsen.ttl`: `qudt:length "…"^^unit:M` gebruikt een
+  eenheid als datatype (QUDT: `qudt:QuantityValue` met `qudt:numericValue` en `qudt:hasUnit`);
+  `skos:notation "24165"^^code:uidn` (en `oidn`, `vhag`, `vhas`): de SKOS-conventie van een
+  notatie-datatype per codesysteem is goed, maar `code:uidn` is in `waterlopen.ttl` een
+  `rdf:Property`, geen `rdfs:Datatype`. Oplossing in de ontologie: een eigen datatype per notatie.
+- `waterkwaliteit/nieuw_model/oppervlaktewater_concentraties.ttl`: idem voor `waterlopen:vhag` en
+  `waterlopen:uidn`.

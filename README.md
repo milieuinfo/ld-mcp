@@ -137,6 +137,11 @@ from Jena, so `rdfs:lable` is still unknown). `lookup_term` uses the same defini
   of a property, but never declare it;
 - `Property used as class` / `Class used as property` (error): an `rdf:type` object that is
   declared only as a property, or a predicate declared only as a class;
+- `Unknown datatype` (error in `xsd:`, `rdf:` or a loaded namespace, with a suggestion such as
+  `xsd:strin` → `xsd:string`; otherwise suspect), `Not a datatype` (error: a known term that is no
+  datatype, e.g. a unit in `"1.5"^^unit:M`) and `Invalid literal` (error: e.g.
+  `"not a date"^^xsd:dateTime`). Known datatypes: those Jena implements and every `rdfs:Datatype` in
+  the ontologies;
 - `Resource minted in a vocabulary namespace`: the data file describes a resource of its own in
   someone else's namespace, e.g. `unit:EUR a qudt:Unit` (reported once, not again as unknown where
   the data uses it).

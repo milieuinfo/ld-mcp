@@ -507,5 +507,36 @@ class DataValidatorTest {
         assertTrue(index.lookup("https://example.org/voc/Thing").startsWith("<https://example.org/voc/Thing>")
                 || index.lookup("https://example.org/voc/Thing").contains("owl:Class"));
     }
+
+    @Test
+    void datatypesAndLiteralsAreChecked() throws IOException {
+        DataValidator v = validator(false);
+        String out = v.validate(data("""
+                @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+                ex:a sosa:implements ex:b ;
+                     <http://www.w3.org/2000/01/rdf-schema#label> "x"^^xsd:strin , "not a date"^^xsd:dateTime ,
+                         "5"^^xsd:integer , "naam"@nl , "1.5"^^unit:M , "y"^^<https://dt.invalid/own> .
+                """));
+        assertTrue(out.contains("- [error] Unknown datatype: http://www.w3.org/2001/XMLSchema#strin\n"
+                + "    Did you mean <http://www.w3.org/2001/XMLSchema#string>?"), out);
+        assertTrue(out.contains("- [error] Invalid literal: \"not a date\"^^http://www.w3.org/2001/XMLSchema#dateTime"), out);
+        assertTrue(out.contains("- [error] Not a datatype: http://qudt.org/vocab/unit/M"), out);
+        assertTrue(out.contains("- [suspect] Unknown datatype: https://dt.invalid/own"), out);
+        assertFalse(out.contains("integer"), out);
+    }
+
+    @Test
+    void aDatatypeDeclaredInTheOntologyIsKnown() throws IOException {
+        String out = validatorFor(ROLES + "voc:code a rdfs:Datatype .").validate(data(
+                "ex:a <http://www.w3.org/2000/01/rdf-schema#label> \"A-1\"^^voc:code ."));
+        assertTrue(out.contains("[VOCAB] ok"), out);
+    }
+
+    @Test
+    void levenshtein() {
+        assertEquals(1, DataValidator.distance("dateTim", "dateTime"));
+        assertEquals(0, DataValidator.distance("", ""));
+        assertEquals(3, DataValidator.distance("abc", ""));
+    }
 }
 
