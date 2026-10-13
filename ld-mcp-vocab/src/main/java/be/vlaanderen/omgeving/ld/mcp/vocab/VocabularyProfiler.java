@@ -94,7 +94,8 @@ public final class VocabularyProfiler {
      * @param sampleTerm a term IRI to dereference as well; {@code null} to take a class or property
      *                   from the vocabulary itself
      * @return the fact sheet as text
-     * @throws IllegalArgumentException if the vocabulary is neither an IRI nor known to LOV
+     * @throws IllegalArgumentException if the vocabulary is neither an IRI nor known to LOV (a prefix
+     *                                  cannot be resolved while LOV is unavailable)
      */
     public String profile(String vocab, String sampleTerm) {
         return profile(vocab, sampleTerm, null, null);
@@ -111,21 +112,38 @@ public final class VocabularyProfiler {
      * @param register   known alignment modules, or {@code null} if none is configured
      * @param loaded     the loaded ontologies, or {@code null} to skip that part
      * @return the fact sheet as text
-     * @throws IllegalArgumentException if the vocabulary is neither an IRI nor known to LOV
+     * @throws IllegalArgumentException if the vocabulary is neither an IRI nor known to LOV (a prefix
+     *                                  cannot be resolved while LOV is unavailable)
      */
     public String profile(String vocab, String sampleTerm, AlignmentRegister register, Model loaded) {
         StringBuilder sb = new StringBuilder();
         sb.append("Fact sheet for '").append(vocab).append("'. Facts only; assess them yourself "
                 + "(e.g. against R17 of oslo-ld-kit). Live checks outweigh LOV, whose records can lag behind.\n\n");
 
-        Optional<JsonObject> info = lov == null ? Optional.empty() : lov.vocabularyInfo(vocab);
+        // LOV is only one source: when it cannot be reached, the live checks still run for an IRI.
+        Optional<JsonObject> info = Optional.empty();
+        String lovError = null;
+        if (lov != null) {
+            try {
+                info = lov.vocabularyInfo(vocab);
+            } catch (IllegalArgumentException e) {
+                lovError = e.getMessage();
+            }
+        }
         sb.append("## LOV record\n");
-        sb.append(info.map(LovClient::summarise).orElse("not in LOV\n"));
+        if (lovError != null) {
+            sb.append("unavailable: ").append(lovError).append('\n');
+        } else {
+            sb.append(info.map(LovClient::summarise).orElse("not in LOV\n"));
+        }
 
         String namespace = info.map(i -> i.hasKey("nsp") ? i.get("nsp").getAsString().value() : null)
                 .orElse(isIri(vocab) ? vocab : null);
         if (namespace == null) {
-            throw new IllegalArgumentException("'" + vocab + "' is not an IRI and LOV does not know it as a prefix");
+            throw new IllegalArgumentException(lovError != null
+                    ? "'" + vocab + "' is not an IRI, and LOV, which could resolve it as a prefix, is unavailable: "
+                            + lovError + ". Give the namespace IRI instead."
+                    : "'" + vocab + "' is not an IRI and LOV does not know it as a prefix");
         }
 
         sb.append("\n## Alignments\n");

@@ -150,6 +150,37 @@ class VocabularyProfilerTest {
         assertTrue(out.contains("register: none configured (--alignments)"), out);
     }
 
+    private static LovClient unreachableLov() {
+        return new LovClient("https://lov.example/api", (uri, accept) -> {
+            throw new java.io.IOException("HTTP connect timed out");
+        });
+    }
+
+    @Test
+    void unreachableLovStillRunsTheLiveChecks() {
+        AlignmentRegister register = AlignmentRegister.fromModel(ttl(REGISTER));
+        Fetcher vocabOnly = (uri, accept) -> {
+            if (uri.getHost().equals("lov.example")) {
+                throw new java.io.IOException("HTTP connect timed out");
+            }
+            return TURTLE_ONLY.getOrDefault(accept, new Fetcher.Response(406, "text/html", "<html/>"));
+        };
+        String out = new VocabularyProfiler(new LovClient("https://lov.example/api", vocabOnly), vocabOnly,
+                VocabularyProfiler.DEFAULT_CORE).profile(NS, null, register, ttl(""));
+        assertTrue(out.contains("## LOV record\nunavailable: Cannot reach LOV"), out);
+        assertTrue(out.contains("register: 1 of 2 known module(s) connect this namespace"), out);
+        assertTrue(out.contains("- Accept text/turtle: 200, text/turtle; charset=utf-8, "), out);
+        assertTrue(out.contains("## Content of the vocabulary"), out);
+    }
+
+    @Test
+    void prefixNeedsLovWhenItIsUnreachable() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> new VocabularyProfiler(unreachableLov(), fetcher(TURTLE_ONLY), VocabularyProfiler.DEFAULT_CORE)
+                        .profile("voc", null));
+        assertTrue(e.getMessage().contains("Give the namespace IRI instead"), e.getMessage());
+    }
+
     @Test
     void prefixUnknownToLovIsAnError() {
         assertThrows(IllegalArgumentException.class,

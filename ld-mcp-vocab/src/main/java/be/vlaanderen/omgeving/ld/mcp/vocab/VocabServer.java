@@ -61,7 +61,9 @@ public final class VocabServer {
 
         boolean offline = parsed.flag("offline");
         Fetcher fetcher = Fetcher.http(Duration.ofSeconds(20));
-        LovClient lov = new LovClient(parsed.first("lov-url").orElse(LovClient.DEFAULT_BASE_URL), fetcher);
+        // LOV often hangs or drops the handshake: a shorter time-out per attempt, and retries.
+        LovClient lov = new LovClient(parsed.first("lov-url").orElse(LovClient.DEFAULT_BASE_URL),
+                Fetcher.http(Duration.ofSeconds(10)), LovClient.DEFAULT_ATTEMPTS, LovClient.DEFAULT_PAUSE);
         List<String> core = parsed.all("core-namespace").isEmpty()
                 ? VocabularyProfiler.DEFAULT_CORE : parsed.all("core-namespace");
         VocabularyProfiler profiler = new VocabularyProfiler(lov, fetcher, core);

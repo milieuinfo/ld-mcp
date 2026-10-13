@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.jena.atlas.json.JsonObject;
 import org.junit.jupiter.api.Test;
@@ -91,5 +93,46 @@ class LovClientTest {
         assertTrue(out.contains("latest version in LOV: v1.0, issued 2015-04-01"), out);
         assertTrue(out.contains("  extends: http://www.w3.org/2001/XMLSchema"), out);
         assertTrue(out.contains("reused by (extends/specializes/imports): 2/1/0 vocabularies"), out);
+    }
+
+    /** A client with three attempts and no pause, whose fetcher answers from a script of outcomes. */
+    private static LovClient scripted(AtomicInteger calls, Object... outcomes) {
+        return new LovClient("https://lov.example/api", (uri, accept) -> {
+            Object o = outcomes[Math.min(calls.getAndIncrement(), outcomes.length - 1)];
+            if (o instanceof IOException e) {
+                throw e;
+            }
+            return new Fetcher.Response((Integer) o, "application/json", "");
+        }, 3, Duration.ZERO);
+    }
+
+    @Test
+    void retriesAfterABrokenHandshake() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = scripted(calls, new IOException("Remote host terminated the handshake"), 404);
+        assertTrue(lov.vocabularyInfo("nope").isEmpty());
+        assertEquals(2, calls.get());
+    }
+
+    @Test
+    void givesUpAfterTheLastAttempt() {
+        AtomicInteger calls = new AtomicInteger();
+        LovClient lov = scripted(calls, new IOException("HTTP connect timed out"));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> lov.vocabularyInfo("p-plan"));
+        assertTrue(e.getMessage().contains("Cannot reach LOV") && e.getMessage().contains("(3 attempts)"), e.getMessage());
+        assertEquals(3, calls.get());
+    }
+
+    @Test
+    void retriesOnTryAgainLaterStatusOnly() {
+        AtomicInteger busy = new AtomicInteger();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> scripted(busy, 503).vocabularyInfo("p-plan"));
+        assertTrue(e.getMessage().contains("LOV answered 503"), e.getMessage());
+        assertEquals(3, busy.get());
+
+        AtomicInteger unknown = new AtomicInteger();
+        assertTrue(scripted(unknown, 404).vocabularyInfo("nope").isEmpty());
+        assertEquals(1, unknown.get());
     }
 }

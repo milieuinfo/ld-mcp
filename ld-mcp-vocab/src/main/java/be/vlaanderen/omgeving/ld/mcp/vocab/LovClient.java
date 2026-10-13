@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -26,18 +27,44 @@ public final class LovClient {
     /** Default base URL of the LOV API (version 2). */
     public static final String DEFAULT_BASE_URL = "https://lov.linkeddata.es/dataset/api/v2";
 
+    /** Default number of attempts per request: the LOV server often drops the TLS handshake or does not answer. */
+    public static final int DEFAULT_ATTEMPTS = 3;
+
+    /** Default pause before the second attempt; it doubles before each further attempt. */
+    public static final Duration DEFAULT_PAUSE = Duration.ofSeconds(1);
+
     private final String baseUrl;
     private final Fetcher fetcher;
+    private final int attempts;
+    private final Duration pause;
 
     /**
-     * Creates a client.
+     * Creates a client that makes one attempt per request.
      *
      * @param baseUrl base URL of the LOV API, without trailing slash, e.g. {@link #DEFAULT_BASE_URL}
      * @param fetcher how to fetch the API responses
      */
     public LovClient(String baseUrl, Fetcher fetcher) {
+        this(baseUrl, fetcher, 1, Duration.ZERO);
+    }
+
+    /**
+     * Creates a client that retries a request that fails without an answer (no connection,
+     * time-out, broken handshake) or with a status that says "try again later" (429, 502, 503, 504).
+     *
+     * @param baseUrl  base URL of the LOV API, without trailing slash, e.g. {@link #DEFAULT_BASE_URL}
+     * @param fetcher  how to fetch the API responses
+     * @param attempts the maximum number of attempts per request, at least 1
+     * @param pause    the pause before the second attempt; doubled before each further attempt
+     */
+    public LovClient(String baseUrl, Fetcher fetcher, int attempts, Duration pause) {
+        if (attempts < 1) {
+            throw new IllegalArgumentException("attempts must be at least 1, not " + attempts);
+        }
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.fetcher = fetcher;
+        this.attempts = attempts;
+        this.pause = pause;
     }
 
     /**
@@ -99,11 +126,14 @@ public final class LovClient {
     public Optional<JsonObject> vocabularyInfo(String vocab) {
         String url = baseUrl + "/vocabulary/info?vocab=" + encode(vocab);
         Fetcher.Response response = fetch(url);
-        if (response.status() == 404 || response.body().isBlank()) {
+        if (response.status() == 404) {
             return Optional.empty();
         }
         if (!response.ok()) {
             throw new IllegalArgumentException("LOV answered " + response.status() + " for " + url);
+        }
+        if (response.body().isBlank()) {
+            return Optional.empty();
         }
         JsonObject json = parse(response.body(), url);
         return json.hasKey("uri") ? Optional.of(json) : Optional.empty();
@@ -149,10 +179,44 @@ public final class LovClient {
     }
 
     private Fetcher.Response fetch(String url) {
+        IOException last = null;
+        Fetcher.Response response = null;
+        Duration wait = pause;
+        for (int i = 1; i <= attempts; i++) {
+            if (i > 1) {
+                sleep(wait);
+                wait = wait.multipliedBy(2);
+            }
+            try {
+                response = fetcher.get(URI.create(url), "application/json");
+                last = null;
+                if (!isTransient(response.status())) {
+                    return response;
+                }
+            } catch (IOException e) {
+                last = e;
+            }
+        }
+        if (last != null) {
+            throw new IllegalArgumentException("Cannot reach LOV (" + url + "): " + last.getMessage()
+                    + (attempts > 1 ? " (" + attempts + " attempts)" : ""), last);
+        }
+        return response;
+    }
+
+    private static boolean isTransient(int status) {
+        return status == 429 || status == 502 || status == 503 || status == 504;
+    }
+
+    private static void sleep(Duration d) {
+        if (d.isZero() || d.isNegative()) {
+            return;
+        }
         try {
-            return fetcher.get(URI.create(url), "application/json");
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Cannot reach LOV (" + url + "): " + e.getMessage(), e);
+            Thread.sleep(d.toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Interrupted while waiting to retry LOV", e);
         }
     }
 
