@@ -229,6 +229,7 @@ public final class DataValidator {
                 .thenComparing(Comparator.naturalOrder()));
         data.listStatements().forEachRemaining(st -> {
             String p = st.getPredicate().getURI();
+            deprecated(p, unknown);
             if (!index.isKnown(p)) {
                 unknownOrUndefined(unknown, "property", p);
             } else if (index.isClass(p) && !index.isProperty(p)) {
@@ -236,6 +237,7 @@ public final class DataValidator {
             }
             if (st.getPredicate().equals(RDF.type) && st.getObject().isURIResource()) {
                 String c = st.getObject().asResource().getURI();
+                deprecated(c, unknown);
                 if (!index.isKnown(c)) {
                     unknownOrUndefined(unknown, "class", c);
                 } else if (index.isProperty(c) && !index.isClass(c)) {
@@ -244,6 +246,8 @@ public final class DataValidator {
             } else if (st.getObject().isURIResource()
                     && (isUnknownInVocabulary(st.getResource()) || isNearVocabulary(st.getResource()))) {
                 unknownOrUndefined(unknown, "resource", st.getResource().getURI());
+            } else if (st.getObject().isURIResource()) {
+                deprecated(st.getResource().getURI(), unknown);
             }
             if (st.getObject().isLiteral()) {
                 checkLiteral(st.getObject().asLiteral(), unknown);
@@ -270,13 +274,19 @@ public final class DataValidator {
         unknown.forEach((message, code) -> {
             String iri = message.substring(message.indexOf(": ") + 2);
             boolean role = code.endsWith("-used-as-class") || code.endsWith("-used-as-property")
-                    || code.equals("invalid-literal") || code.equals("not-a-datatype");
+                    || code.equals("invalid-literal") || code.equals("not-a-datatype")
+                    || code.equals("deprecated-term");
             Hint hint = role ? null : nearMiss(iri);
             List<String> hints = new ArrayList<>();
             if (hint != null) {
                 hints.add(hint.text());
             }
-            if (code.equals("unknown-datatype") && hint == null) {
+            if (code.equals("deprecated-term")) {
+                List<String> by = index.replacements(iri);
+                if (!by.isEmpty()) {
+                    hints.add("Replaced by " + String.join(", ", by));
+                }
+            } else if (code.equals("unknown-datatype") && hint == null) {
                 similarDatatypes(iri).ifPresent(hints::add);
             } else if (!role && (hint == null || !hint.termExists())) {
                 // Suggestions from lookup_term: everything after the "Not found" line.
@@ -285,7 +295,7 @@ public final class DataValidator {
             // Established only where the namespace is loaded: there the term certainly does not exist.
             Certainty certainty = code.startsWith("minted") || code.endsWith("-used-as-class")
                     || code.endsWith("-used-as-property") ? Certainty.ERROR
-                    : code.equals("undefined-term") ? Certainty.SUSPECT
+                    : code.equals("undefined-term") || code.equals("deprecated-term") ? Certainty.SUSPECT
                     : code.equals("not-a-datatype") || code.equals("invalid-literal") ? Certainty.ERROR
                     : code.equals("unknown-datatype") ? datatypeCertainty(iri)
                     : hint != null ? hint.certainty()
@@ -560,6 +570,12 @@ public final class DataValidator {
         if (known != null && !known.isValid(literal.getLexicalForm())) {
             unknown.put("Invalid literal: \"" + Untrusted.literal(literal.getLexicalForm()) + "\"^^" + dt,
                     "invalid-literal");
+        }
+    }
+
+    private void deprecated(String iri, Map<String, String> unknown) {
+        if (index.isDeprecated(iri)) {
+            unknown.put("Deprecated term: " + iri, "deprecated-term");
         }
     }
 

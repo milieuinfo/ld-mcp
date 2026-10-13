@@ -27,6 +27,8 @@ import org.apache.jena.vocabulary.SKOS;
  */
 public final class VocabIndex {
 
+    private static final Property DCT_IS_REPLACED_BY =
+            ResourceFactory.createProperty("http://purl.org/dc/terms/isReplacedBy");
     private static final Property DCT_DESCRIPTION =
             ResourceFactory.createProperty("http://purl.org/dc/terms/description");
 
@@ -126,6 +128,42 @@ public final class VocabIndex {
     }
 
     /**
+     * Tells whether a term is deprecated: {@code owl:deprecated true}, or typed
+     * {@code owl:DeprecatedClass} or {@code owl:DeprecatedProperty}.
+     *
+     * @param iri the full IRI
+     * @return whether the ontologies deprecate it
+     */
+    public boolean isDeprecated(String iri) {
+        Resource r = model.createResource(iri);
+        return model.contains(r, RDF.type, OWL.DeprecatedClass) || model.contains(r, RDF.type, OWL.DeprecatedProperty)
+                || model.listObjectsOfProperty(r, OWL.deprecated).toList().stream()
+                        .anyMatch(VocabIndex::isTrue);
+    }
+
+    /**
+     * Returns what replaces a deprecated term: {@code dct:isReplacedBy}, or else an equivalent class
+     * or property.
+     *
+     * @param iri the full IRI
+     * @return the replacements, as prefixed names where possible
+     */
+    public List<String> replacements(String iri) {
+        Resource r = model.createResource(iri);
+        List<String> out = objects(r, DCT_IS_REPLACED_BY);
+        return out.isEmpty() ? objects(r, OWL.equivalentClass, OWL.equivalentProperty) : out;
+    }
+
+    /** Whether a value of owl:deprecated means true ("true"^^xsd:boolean, or "true", "1"). */
+    static boolean isTrue(RDFNode n) {
+        if (!n.isLiteral()) {
+            return false;
+        }
+        String v = n.asLiteral().getLexicalForm().strip();
+        return v.equalsIgnoreCase("true") || v.equals("1");
+    }
+
+    /**
      * Tells whether a term is a class: typed as one, or the subject of {@code rdfs:subClassOf}, or a
      * built-in class.
      *
@@ -180,6 +218,11 @@ public final class VocabIndex {
         String shortForm = shortForm(iri);
         sb.append(shortForm.equals("<" + iri + ">") ? shortForm : shortForm + "  <" + iri + ">").append('\n');
         section(sb, "type", objects(r, RDF.type));
+        if (isDeprecated(iri)) {
+            List<String> by = replacements(iri);
+            sb.append("  deprecated: true").append(by.isEmpty() ? "" : " (replaced by " + String.join(", ", by) + ")")
+                    .append('\n');
+        }
         section(sb, "label", literals(r, RDFS.label, SKOS.prefLabel));
         section(sb, "definition", literals(r, SKOS.definition, RDFS.comment, DCT_DESCRIPTION));
         section(sb, "subClassOf", objects(r, RDFS.subClassOf));

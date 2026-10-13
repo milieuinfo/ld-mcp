@@ -1,6 +1,7 @@
 Validation: src/main/input/overstort/alternatief/overstort_emissie.ttl (125 triples)
 
-[VOCAB] ok
+[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 320 inferred triples
 

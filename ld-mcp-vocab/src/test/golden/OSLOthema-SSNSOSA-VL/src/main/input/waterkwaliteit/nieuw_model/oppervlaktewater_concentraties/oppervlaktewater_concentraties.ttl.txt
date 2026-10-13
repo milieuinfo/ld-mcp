@@ -1,10 +1,11 @@
 Validation: src/main/input/waterkwaliteit/nieuw_model/oppervlaktewater_concentraties/oppervlaktewater_concentraties.ttl (311 triples)
 
-[VOCAB] 4 error(s), 0 suspect, 0 hint(s)
+[VOCAB] 4 error(s), 1 suspect, 0 hint(s)
 - [error] Not a datatype: http://qudt.org/vocab/unit/M
 - [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#oidn
 - [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#uidn
 - [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#vhag
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 658 inferred triples
 

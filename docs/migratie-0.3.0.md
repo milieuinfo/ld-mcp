@@ -119,3 +119,17 @@ ontologieën. Let op: Jena's parser registreert elk datatype-IRI dat hij tegenko
   `rdf:Property`, geen `rdfs:Datatype`. Oplossing in de ontologie: een eigen datatype per notatie.
 - `waterkwaliteit/nieuw_model/oppervlaktewater_concentraties.ttl`: idem voor `waterlopen:vhag` en
   `waterlopen:uidn`.
+
+## 3.6 Verouderde termen
+
+`lookup_term` toont `deprecated: true` (bij `owl:deprecated true`, `owl:DeprecatedClass`,
+`owl:DeprecatedProperty`), met de vervanger (`dct:isReplacedBy`, anders een equivalente klasse of
+property). `[VOCAB]` meldt `Deprecated term` (suspect), met `Replaced by …` als die er is. In
+`vocabulary_profile` telt `owl:deprecated false` niet meer als verouderd.
+
+**Golden-diff: 17 bestanden krijgen `[suspect] Deprecated term: sosa:Result`.** De geladen editie van
+SSN/SOSA 2023 (`org/w3/www/ns/sosa/ssn-sosa_2023.ttl`) verklaart `sosa:Result owl:deprecated true`
+(w3c/sdw-sosa-ssn #113, #163; ook vermeld in de SOSA–SAREF-uitlijning). **Punt voor de kit:** R3
+beveelt `sosa:Result` aan voor lokale resultaten. Dat moet herbekeken worden (bv. enkel
+`qudt:QuantityValue`, of de status van `sosa:Result` in de definitieve editie nagaan). Tot dan is de
+melding terecht en, als ze bewust blijft staan, te vermelden in de bespreking (§6).

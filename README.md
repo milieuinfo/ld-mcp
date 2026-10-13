@@ -142,6 +142,9 @@ from Jena, so `rdfs:lable` is still unknown). `lookup_term` uses the same defini
   datatype, e.g. a unit in `"1.5"^^unit:M`) and `Invalid literal` (error: e.g.
   `"not a date"^^xsd:dateTime`). Known datatypes: those Jena implements and every `rdfs:Datatype` in
   the ontologies;
+- `Deprecated term` (suspect): `owl:deprecated true`, `owl:DeprecatedClass` or
+  `owl:DeprecatedProperty` in the ontologies, with `Replaced by …` (`dcterms:isReplacedBy`, or an
+  equivalent class or property) when known; `lookup_term` shows `deprecated: true` as well;
 - `Resource minted in a vocabulary namespace`: the data file describes a resource of its own in
   someone else's namespace, e.g. `unit:EUR a qudt:Unit` (reported once, not again as unknown where
   the data uses it).

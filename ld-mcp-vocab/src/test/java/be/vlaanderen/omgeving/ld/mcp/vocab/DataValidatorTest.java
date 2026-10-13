@@ -538,5 +538,31 @@ class DataValidatorTest {
         assertEquals(0, DataValidator.distance("", ""));
         assertEquals(3, DataValidator.distance("abc", ""));
     }
+
+    private static final String DEPRECATED = ROLES + """
+            @prefix dct: <http://purl.org/dc/terms/> .
+            voc:old a owl:ObjectProperty ; owl:deprecated true ; dct:isReplacedBy voc:part .
+            voc:OldThing a owl:DeprecatedClass ; owl:equivalentClass voc:Thing .
+            voc:fine a owl:ObjectProperty ; owl:deprecated false .
+            """;
+
+    @Test
+    void deprecatedTermsAreSuspectWithTheirReplacement() throws IOException {
+        String out = validatorFor(DEPRECATED).validate(data("ex:a a voc:OldThing ; voc:old ex:b ; voc:fine ex:c ."));
+        assertTrue(out.contains("[VOCAB] 0 error(s), 2 suspect, 0 hint(s)"), out);
+        assertTrue(out.contains("- [suspect] Deprecated term: https://example.org/voc/old\n    Replaced by "), out);
+        assertTrue(out.contains("Deprecated term: https://example.org/voc/OldThing"), out);
+        assertFalse(out.contains("voc/fine"), out);
+    }
+
+    @Test
+    void lookupShowsDeprecation() {
+        Model ontology = ModelFactory.createDefaultModel();
+        ontology.read(new StringReader(DEPRECATED), null, "TTL");
+        VocabIndex index = new VocabIndex(ontology);
+        assertTrue(index.lookup("https://example.org/voc/old").contains("  deprecated: true (replaced by "),
+                index.lookup("https://example.org/voc/old"));
+        assertFalse(index.lookup("https://example.org/voc/fine").contains("deprecated"));
+    }
 }
 

@@ -1,6 +1,7 @@
 Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_pfas.ttl (114 triples)
 
-[VOCAB] ok
+[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 221 inferred triples
 

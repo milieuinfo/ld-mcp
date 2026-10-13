@@ -1,6 +1,7 @@
 Validation: src/main/input/geluidsmeetnet/geluidsmeetnet.ttl (5295 triples)
 
-[VOCAB] ok
+[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 10621 inferred triples
 

@@ -67,7 +67,7 @@ class VocabularyProfilerTest {
         assertTrue(out.contains("licence: <https://creativecommons.org/licenses/by/4.0/>"), out);
         assertTrue(out.contains("classes: 3, 1 without label, 2 without definition"), out);
         assertTrue(out.contains("properties: 1, 0 without label, 1 without definition, 1 without domain, 0 without range"), out);
-        assertTrue(out.contains("deprecated terms (owl:deprecated): 1"), out);
+        assertTrue(out.contains("deprecated terms (owl:deprecated true, owl:DeprecatedClass/Property): 1"), out);
         assertTrue(out.contains("links to the core (subClassOf, subPropertyOf, domain, range, equivalent, disjoint, inverse): "
                 + "{http://www.w3.org/ns/sosa/=1}"), out);
         assertTrue(out.contains("axioms about terms outside its own namespace: 1, e.g.\n  - sosa:Sensor rdfs:subClassOf prov:Activity"), out);
@@ -255,4 +255,19 @@ class VocabularyProfilerTest {
         int end = out.indexOf("[end of untrusted content from example.org]");
         assertTrue(start >= 0 && start < out.indexOf(line) && out.indexOf(line) < end, out);
     }
+
+    @Test
+    void owlDeprecatedFalseIsNoDeprecation() {
+        String voc = """
+                @prefix owl: <http://www.w3.org/2002/07/owl#> .
+                <https://example.org/voc#A> a owl:Class ; owl:deprecated false .
+                <https://example.org/voc#B> a owl:DeprecatedClass .
+                <https://example.org/voc#C> a owl:Class ; owl:deprecated "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+                """;
+        Fetcher f = (uri, accept) -> accept.equals("text/turtle")
+                ? new Fetcher.Response(200, "text/turtle", voc) : new Fetcher.Response(406, "text/html", "");
+        String out = new VocabularyProfiler(null, f, VocabularyProfiler.DEFAULT_CORE).profile("https://example.org/voc#", null);
+        assertTrue(out.contains("owl:DeprecatedClass/Property): 2"), out);
+    }
 }
+

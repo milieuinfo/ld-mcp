@@ -1,7 +1,8 @@
 Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldIsolatieadvies/DatavoorbeeldIsolatieadvies_herzien.ttl (103 triples)
 
-[VOCAB] 1 error(s), 0 suspect, 0 hint(s)
+[VOCAB] 1 error(s), 1 suspect, 0 hint(s)
 - [error] Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#stadskantoor
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 268 inferred triples
 

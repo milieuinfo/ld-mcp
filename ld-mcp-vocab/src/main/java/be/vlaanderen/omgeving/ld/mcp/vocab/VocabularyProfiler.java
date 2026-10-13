@@ -383,9 +383,18 @@ public final class VocabularyProfiler {
                 .append(missing(m, properties, RDFS.domain)).append(" without domain, ")
                 .append(missing(m, properties, RDFS.range)).append(" without range\n");
 
-        long deprecated = m.listSubjectsWithProperty(OWL.deprecated).toList().stream()
+        // owl:deprecated false is not a deprecation; owl:DeprecatedClass/Property is one.
+        Set<Resource> deprecatedTerms = new java.util.HashSet<>();
+        m.listStatements(null, OWL.deprecated, (RDFNode) null).forEachRemaining(st -> {
+            if (VocabIndex.isTrue(st.getObject())) {
+                deprecatedTerms.add(st.getSubject());
+            }
+        });
+        deprecatedTerms.addAll(m.listSubjectsWithProperty(RDF.type, OWL.DeprecatedClass).toList());
+        deprecatedTerms.addAll(m.listSubjectsWithProperty(RDF.type, OWL.DeprecatedProperty).toList());
+        long deprecated = deprecatedTerms.stream()
                 .filter(s -> s.isURIResource() && s.getURI().startsWith(namespace)).count();
-        sb.append("deprecated terms (owl:deprecated): ").append(deprecated).append('\n');
+        sb.append("deprecated terms (owl:deprecated true, owl:DeprecatedClass/Property): ").append(deprecated).append('\n');
 
         // Links from own terms to the core.
         Map<String, Integer> links = new TreeMap<>();

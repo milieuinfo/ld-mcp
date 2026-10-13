@@ -1,6 +1,7 @@
 Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalwater_debieten.ttl (98 triples)
 
-[VOCAB] ok
+[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
+- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
 [INFERENCE] 208 inferred triples
 
