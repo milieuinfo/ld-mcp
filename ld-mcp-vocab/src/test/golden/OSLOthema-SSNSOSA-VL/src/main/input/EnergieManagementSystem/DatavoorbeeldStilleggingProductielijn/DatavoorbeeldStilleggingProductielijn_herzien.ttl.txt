@@ -1,13 +1,9 @@
-Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldStilleggingProductielijn/DatavoorbeeldStilleggingProductielijn_herzien.ttl (137 triples)
+Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldStilleggingProductielijn/DatavoorbeeldStilleggingProductielijn_herzien.ttl (145 triples)
 
-[VOCAB] 2 error(s), 0 suspect, 0 hint(s)
-- [error] Unknown resource: http://qudt.org/vocab/unit/EUR-PER-MegaW-HR
-    Similar terms: prefix:Mega, unit:MegaW, unit:MegaW-HR, unit:PER-M, unit:W-HR
-- [error] Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
+[VOCAB] ok
 
-[INFERENCE] 317 inferred triples
+[INFERENCE] 339 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 1 violation(s) (30 of 172 shapes applied to 22 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
-- ent:prijs_105eur  path: qudt:hasUnit  — qudt:Quantifiable: qudt:hasUnit needs every value is a qudt:Unit; at most 1 value(s) (generated from the OWL restrictions) (value: unit:EUR-PER-MegaW-HR)
+[SHACL] conforms (31 of 172 shapes applied to 23 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
