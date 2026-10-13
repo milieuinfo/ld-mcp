@@ -27,6 +27,8 @@ import org.apache.jena.vocabulary.SKOS;
  */
 public final class VocabIndex {
 
+    private static final Property VANN_USAGE_NOTE =
+            ResourceFactory.createProperty("http://purl.org/vocab/vann/usageNote");
     private static final Property DCT_IS_REPLACED_BY =
             ResourceFactory.createProperty("http://purl.org/dc/terms/isReplacedBy");
     private static final Property DCT_DESCRIPTION =
@@ -273,7 +275,14 @@ public final class VocabIndex {
                     .append('\n');
         }
         section(sb, "label", literals(r, RDFS.label, SKOS.prefLabel));
+        section(sb, "altLabel", literals(r, SKOS.altLabel));
+        section(sb, "notation", literals(r, SKOS.notation));
         section(sb, "definition", literals(r, SKOS.definition, RDFS.comment, DCT_DESCRIPTION));
+        section(sb, "scopeNote", literals(r, SKOS.scopeNote));
+        section(sb, "usageNote", literals(r, VANN_USAGE_NOTE));
+        section(sb, "inScheme", objects(r, SKOS.inScheme));
+        section(sb, "broader", objects(r, SKOS.broader));
+        section(sb, "narrower", unite(objects(r, SKOS.narrower), subjects(SKOS.broader, r)));
         section(sb, "subClassOf", objects(r, RDFS.subClassOf));
         section(sb, "subPropertyOf", objects(r, RDFS.subPropertyOf));
         section(sb, "domain", objects(r, RDFS.domain));
@@ -286,6 +295,7 @@ public final class VocabIndex {
         section(sb, "closeMatch", objects(r, SKOS.closeMatch));
         section(sb, "broadMatch", objects(r, SKOS.broadMatch));
         section(sb, "narrowMatch", objects(r, SKOS.narrowMatch));
+        section(sb, "relatedMatch", objects(r, SKOS.relatedMatch));
         section(sb, "subclasses", subjects(RDFS.subClassOf, r));
         section(sb, "subproperties", subjects(RDFS.subPropertyOf, r));
         return sb.toString();
@@ -396,15 +406,19 @@ public final class VocabIndex {
 
     private boolean matches(Resource t, String q) {
         return localName(t.getURI()).toLowerCase(Locale.ROOT).contains(q)
-                || literals(t, RDFS.label, SKOS.prefLabel).stream()
+                || literals(t, RDFS.label, SKOS.prefLabel, SKOS.altLabel).stream()
                         .anyMatch(l -> l.toLowerCase(Locale.ROOT).contains(q));
+    }
+
+    private static List<String> unite(List<String> a, List<String> b) {
+        return java.util.stream.Stream.concat(a.stream(), b.stream()).distinct().sorted().toList();
     }
 
     /** Exact local name or label first, then names or labels that start with the query, then the rest. */
     private int rank(Resource t, String q) {
         List<String> names = new ArrayList<>();
         names.add(localName(t.getURI()).toLowerCase(Locale.ROOT));
-        for (Property p : List.of(RDFS.label, SKOS.prefLabel)) {
+        for (Property p : List.of(RDFS.label, SKOS.prefLabel, SKOS.altLabel)) {
             model.listObjectsOfProperty(t, p).filterKeep(RDFNode::isLiteral).forEachRemaining(l ->
                     names.add(l.asLiteral().getLexicalForm().strip().toLowerCase(Locale.ROOT)));
         }

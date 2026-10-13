@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
+import java.util.List;
 
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+
 import org.junit.jupiter.api.Test;
 
 class VocabIndexTest {
@@ -83,4 +85,29 @@ class VocabIndexTest {
         String out = index.search("sample", 10);
         assertTrue(out.indexOf("sosa:Sample ") < out.indexOf("sosa:SpatialSample"), out);
     }
+
+    @Test
+    void conceptsShowTheirSchemeHierarchyAndNotes() {
+        org.apache.jena.rdf.model.Model m = org.apache.jena.rdf.model.ModelFactory.createDefaultModel();
+        m.read(new java.io.StringReader("""
+                @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+                @prefix vann: <http://purl.org/vocab/vann/> .
+                @prefix c:    <https://example.org/code/> .
+                c:mgl a skos:Concept ; skos:prefLabel "mg/L"@nl ; skos:altLabel "milligram per liter"@nl ;
+                    skos:notation "mg/L" ; skos:inScheme c:units ; skos:broader c:mass ;
+                    skos:scopeNote "voor concentraties"@nl ; vann:usageNote "niet voor vrachten"@nl ;
+                    skos:relatedMatch c:other .
+                c:ugl a skos:Concept ; skos:broader c:mgl .
+                """), null, "TTL");
+        m.setNsPrefix("c", "https://example.org/code/");
+        VocabIndex index = new VocabIndex(m);
+        String out = index.lookup("c:mgl");
+        for (String line : List.of("  altLabel: milligram per liter @nl", "  notation: mg/L", "  inScheme: c:units",
+                "  broader: c:mass", "  narrower: c:ugl", "  scopeNote: voor concentraties @nl",
+                "  usageNote: niet voor vrachten @nl", "  relatedMatch: c:other")) {
+            assertTrue(out.contains(line), line + "\n" + out);
+        }
+        assertTrue(index.search("milligram", 5).contains("c:mgl"), index.search("milligram", 5));
+    }
 }
+

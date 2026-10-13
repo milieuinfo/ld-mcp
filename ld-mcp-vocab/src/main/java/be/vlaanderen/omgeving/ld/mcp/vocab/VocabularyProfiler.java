@@ -77,6 +77,9 @@ public final class VocabularyProfiler {
             RDFS.range, OWL.equivalentClass, OWL.equivalentProperty, OWL.disjointWith, OWL.inverseOf);
     private static final Set<Property> SKOS_RELATIONS = Set.of(SKOS.broader, SKOS.narrower, SKOS.related,
             SKOS.exactMatch, SKOS.closeMatch, SKOS.broadMatch, SKOS.narrowMatch, SKOS.relatedMatch);
+    /** SKOS mappings: the usual form of an alignment between vocabularies that are code lists. */
+    private static final Set<Property> SKOS_MATCHES = Set.of(SKOS.exactMatch, SKOS.closeMatch, SKOS.broadMatch,
+            SKOS.narrowMatch, SKOS.relatedMatch);
     private static final int EXAMPLES = 5;
 
     /** Default time budget of one profile. */
@@ -245,22 +248,31 @@ public final class VocabularyProfiler {
         int count = 0;
         List<String> examples = new ArrayList<>();
         for (Statement st : loaded.listStatements().toList()) {
-            if (!AXIOMS.contains(st.getPredicate()) || !st.getSubject().isURIResource() || !st.getObject().isURIResource()) {
+            if (!(AXIOMS.contains(st.getPredicate()) || SKOS_MATCHES.contains(st.getPredicate()))
+                    || !st.getSubject().isURIResource()) {
                 continue;
             }
             String s = st.getSubject().getURI();
-            String o = st.getObject().asResource().getURI();
-            boolean outward = s.startsWith(namespace) && coreOf(st.getObject()).isPresent() && !o.startsWith(namespace);
-            boolean inward = o.startsWith(namespace) && coreOf(st.getSubject()).isPresent() && !s.startsWith(namespace);
+            // A restriction or union as object: follow the blank nodes to the first named terms.
+            List<String> objects = st.getObject().isURIResource()
+                    ? List.of(st.getObject().asResource().getURI()) : namedIn(st.getObject(), 0);
+            boolean outward = s.startsWith(namespace) && objects.stream()
+                    .anyMatch(o -> !o.startsWith(namespace) && coreOf(o).isPresent());
+            boolean inward = coreOf(s).isPresent() && !s.startsWith(namespace)
+                    && objects.stream().anyMatch(o -> o.startsWith(namespace));
             if (outward || inward) {
                 count++;
                 if (examples.size() < EXAMPLES) {
-                    examples.add(show(loaded, st.getSubject()) + " " + show(loaded, st.getPredicate()) + " " + show(loaded, st.getObject()));
+                    examples.add(show(loaded, st.getSubject()) + " " + show(loaded, st.getPredicate()) + " "
+                            + (st.getObject().isURIResource() ? show(loaded, st.getObject())
+                                    : "[" + String.join(", ", objects.stream()
+                                            .map(o -> show(loaded, loaded.createResource(o))).toList()) + "]"));
                 }
             }
         }
         sb.append("loaded ontologies: ").append(count)
-                .append(" axiom(s) between this vocabulary and the core (in either direction, from any loaded file)");
+                .append(" axiom(s) or SKOS mapping(s) between this vocabulary and the core (in either direction, "
+                        + "from any loaded file, also through restrictions and unions)");
         if (!examples.isEmpty()) {
             sb.append(", e.g.\n");
             examples.forEach(x -> sb.append("  - ").append(x).append('\n'));
@@ -458,8 +470,28 @@ public final class VocabularyProfiler {
         if (!node.isURIResource()) {
             return Optional.empty();
         }
-        String iri = node.asResource().getURI();
+        return coreOf(node.asResource().getURI());
+    }
+
+    private Optional<String> coreOf(String iri) {
         return core.stream().filter(iri::startsWith).findFirst();
+    }
+
+    /** The named resources inside a blank node structure (restrictions, unions, lists), a few levels deep. */
+    private static List<String> namedIn(RDFNode node, int depth) {
+        if (node.isURIResource()) {
+            return List.of(node.asResource().getURI());
+        }
+        if (!node.isAnon() || depth > 4) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        node.asResource().listProperties().forEachRemaining(st -> {
+            if (!st.getPredicate().equals(RDF.type)) {
+                out.addAll(namedIn(st.getObject(), depth + 1));
+            }
+        });
+        return out.stream().distinct().toList();
     }
 
     private static boolean isClass(Model m, Resource r) {

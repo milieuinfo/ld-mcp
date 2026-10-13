@@ -230,3 +230,13 @@ toe als het bericht ze niet noemt: `… (value: ex:x)`.
 
 **Golden-diff:** `waterlopen_meetplaatsen`: segmenten voluit in plaats van als ongeldige CURIE (en
 daardoor een andere volgorde).
+
+## 3.13 Lookup en profiel rijker
+
+`lookup_term` toont ook `altLabel`, `notation`, `scopeNote`, `vann:usageNote`, `inScheme`, `broader`,
+`narrower` (ook afgeleid uit `skos:broader` van andere concepten) en `relatedMatch`; `search_terms`
+zoekt ook in `skos:altLabel`. `vocabulary_profile` telt SKOS-mappings (`exactMatch`, `closeMatch`,
+`broadMatch`, `narrowMatch`, `relatedMatch`) mee als uitlijning, en volgt blank nodes (restricties,
+unies) tot de eerste benoemde termen.
+
+**Golden-diff:** geen.

@@ -129,7 +129,7 @@ class VocabularyProfilerTest {
         assertTrue(out.contains("register: 1 of 2 known module(s) connect this namespace"), out);
         assertTrue(out.contains("- <https://example.org/sosa-voc> SOSA alignment with voc\n"
                 + "  connects with: http://www.w3.org/ns/sosa/\n  loaded: no\n  status: Working draft."), out);
-        assertTrue(out.contains("loaded ontologies: 2 axiom(s) between this vocabulary and the core"), out);
+        assertTrue(out.contains("loaded ontologies: 2 axiom(s) or SKOS mapping(s) between this vocabulary and the core"), out);
         assertTrue(out.contains("No RDF returned"), out);
     }
 
@@ -268,6 +268,26 @@ class VocabularyProfilerTest {
                 ? new Fetcher.Response(200, "text/turtle", voc) : new Fetcher.Response(406, "text/html", "");
         String out = new VocabularyProfiler(null, f, VocabularyProfiler.DEFAULT_CORE).profile("https://example.org/voc#", null);
         assertTrue(out.contains("owl:DeprecatedClass/Property): 2"), out);
+    }
+
+    @Test
+    void skosMappingsAndRestrictionsCountAsAlignment() {
+        Model loaded = ModelFactory.createDefaultModel();
+        loaded.read(new java.io.StringReader("""
+                @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+                @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+                @prefix sosa: <http://www.w3.org/ns/sosa/> .
+                @prefix v:    <https://example.org/voc#> .
+                v:Sensor skos:closeMatch sosa:Sensor .
+                v:Device rdfs:subClassOf [ a owl:Restriction ; owl:onProperty sosa:observes ; owl:someValuesFrom v:Quality ] .
+                v:p rdfs:range [ owl:unionOf ( v:A sosa:Platform ) ] .
+                v:q rdfs:range [ owl:unionOf ( v:A v:B ) ] .
+                """), null, "TTL");
+        Fetcher none = (uri, accept) -> new Fetcher.Response(404, "text/html", "");
+        String out = new VocabularyProfiler(null, none, VocabularyProfiler.DEFAULT_CORE)
+                .profile("https://example.org/voc#", null, null, loaded);
+        assertTrue(out.contains("loaded ontologies: 3 axiom(s) or SKOS mapping(s)"), out);
     }
 }
 
