@@ -108,6 +108,14 @@ class GeneratorBehaviourTest {
     }
 
     @Test
+    void minCardinalityZeroCancelsExplicitMinimumsButKeepsTheRest() throws IOException {
+        String f = "some-values.ttl";
+        conforms(shacl(f, "d:i a ex:Imported ."));
+        violates(shacl(f, "d:i a ex:Imported ; ex:vector 1 , 2 ."), "ex:vector");
+        violates(shacl(f, "d:i a ex:Imported ; ex:kind d:g . d:g a ex:Ghost ."), "ex:kind");
+    }
+
+    @Test
     void someValuesFromThingNeedsAnyValue() throws IOException {
         String f = "some-values.ttl";
         conforms(shacl(f, "d:s a ex:Something ; ex:part d:untyped ."));

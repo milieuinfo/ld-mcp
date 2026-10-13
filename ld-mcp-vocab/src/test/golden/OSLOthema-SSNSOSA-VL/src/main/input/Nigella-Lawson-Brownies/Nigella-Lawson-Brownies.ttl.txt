@@ -1,10 +1,9 @@
-Validation: src/main/input/Nigella-Lawson-Brownies/Nigella-Lawson-Brownies.ttl (573 triples)
+Validation: src/main/input/Nigella-Lawson-Brownies/Nigella-Lawson-Brownies.ttl (569 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 902 inferred triples
+[INFERENCE] 899 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (22 of 170 shapes applied to 52 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (23 of 172 shapes applied to 52 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

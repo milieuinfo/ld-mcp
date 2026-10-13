@@ -6,6 +6,4 @@ Validation: src/main/input/r-factor/rfactor.ttl (2939 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] 2 violation(s) (27 of 170 shapes applied to 464 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
-- ex:unit-rfactor  path: qudt:hasDimensionVector  — qudt:Unit: qudt:hasDimensionVector needs every value is a qudt:QuantityKindDimensionVector; at least 1 value(s); at most 1 value(s) (generated from the OWL restrictions)
-- ex:unit-rfactor  path: qudt:hasQuantityKind  — qudt:Unit: qudt:hasQuantityKind needs every value is a qudt:QuantityKind; at least 1 value(s) (generated from the OWL restrictions)
+[SHACL] conforms (29 of 172 shapes applied to 464 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

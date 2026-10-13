@@ -1,13 +1,12 @@
-Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_pfas.ttl (114 triples)
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_pfas.ttl (117 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 221 inferred triples
+[INFERENCE] 245 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 3 warning(s) (20 of 170 shapes applied to 29 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 3 warning(s) (26 of 172 shapes applied to 29 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-brutovracht-2030042-2009-PAS_2521  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-2030042-2017-PAS_2529  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-2030042-2022-PAS_2525  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

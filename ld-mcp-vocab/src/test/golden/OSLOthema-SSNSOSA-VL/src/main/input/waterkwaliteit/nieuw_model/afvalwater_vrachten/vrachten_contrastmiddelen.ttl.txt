@@ -1,13 +1,12 @@
-Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_contrastmiddelen.ttl (227 triples)
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_vrachten/vrachten_contrastmiddelen.ttl (230 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 430 inferred triples
+[INFERENCE] 479 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 14 warning(s) (25 of 170 shapes applied to 40 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 14 warning(s) (31 of 172 shapes applied to 40 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_117  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_125  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-brutovracht-bedrijven-rio-2014-P_126  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

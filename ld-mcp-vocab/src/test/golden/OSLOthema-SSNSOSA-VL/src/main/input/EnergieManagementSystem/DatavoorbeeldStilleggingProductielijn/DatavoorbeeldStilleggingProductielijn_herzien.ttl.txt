@@ -1,13 +1,13 @@
 Validation: src/main/input/EnergieManagementSystem/DatavoorbeeldStilleggingProductielijn/DatavoorbeeldStilleggingProductielijn_herzien.ttl (137 triples)
 
-[VOCAB] 2 error(s), 1 suspect, 0 hint(s)
+[VOCAB] 2 error(s), 0 suspect, 0 hint(s)
 - [error] Unknown resource: http://qudt.org/vocab/unit/EUR-PER-MegaW-HR
     Similar terms: prefix:Mega, unit:MegaW, unit:MegaW-HR, unit:PER-M, unit:W-HR
 - [error] Resource minted in a vocabulary namespace: https://data.vlaanderen.be/ns/gebouw#fabriek_kortrijk
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
 
-[INFERENCE] 311 inferred triples
+[INFERENCE] 317 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (25 of 170 shapes applied to 22 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 1 violation(s) (30 of 172 shapes applied to 22 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+- ent:prijs_105eur  path: qudt:hasUnit  — qudt:Quantifiable: qudt:hasUnit needs every value is a qudt:Unit; at most 1 value(s) (generated from the OWL restrictions) (value: unit:EUR-PER-MegaW-HR)

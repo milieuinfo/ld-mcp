@@ -19,3 +19,14 @@ ex:Something a owl:Class ;
 ex:Twice a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] ,
                     [ a owl:Restriction ; owl:onProperty ex:part ; owl:someValuesFrom ex:Part ] .
+# owl:minCardinality 0 cancels every lower bound on the path, also explicit (qualified) minimums, as
+# QUDT states them on qudt:Unit; maxima and value constraints stay.
+ex:Imported a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:kind ; owl:minCardinality 1 ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:kind ; owl:allValuesFrom ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:vector ; owl:cardinality 1 ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ;
+                      owl:minQualifiedCardinality 2 ; owl:onClass ex:Part ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:kind ; owl:minCardinality 0 ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:vector ; owl:minCardinality 0 ] ,
+                    [ a owl:Restriction ; owl:onProperty ex:part ; owl:minCardinality 0 ] .

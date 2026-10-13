@@ -1,13 +1,12 @@
-Validation: src/main/input/paleo/paleo_atmosfeer.ttl (85 triples)
+Validation: src/main/input/paleo/paleo_atmosfeer.ttl (83 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 287 inferred triples
+[INFERENCE] 285 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 5 warning(s) (22 of 170 shapes applied to 16 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 5 warning(s) (23 of 172 shapes applied to 16 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:C14Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:C14Observatie  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:CO2Observatie  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

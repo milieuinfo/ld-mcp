@@ -1,17 +1,12 @@
-Validation: src/main/input/waterkwaliteit/nieuw_model/oppervlaktewater_concentraties/oppervlaktewater_concentraties.ttl (311 triples)
+Validation: src/main/input/waterkwaliteit/nieuw_model/oppervlaktewater_concentraties/oppervlaktewater_concentraties.ttl (322 triples)
 
-[VOCAB] 4 error(s), 1 suspect, 0 hint(s)
-- [error] Not a datatype: http://qudt.org/vocab/unit/M
-- [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#oidn
-- [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#uidn
-- [error] Not a datatype: https://data.omgeving.vlaanderen.be/ns/waterlopen#vhag
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 658 inferred triples
+[INFERENCE] 719 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 28 warning(s) (25 of 170 shapes applied to 60 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 28 warning(s) (31 of 172 shapes applied to 60 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1067  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1067  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-OW12000-2019-01-28T130100-PAS_1131  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

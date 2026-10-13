@@ -1,10 +1,9 @@
-Validation: src/main/input/temperatuur-raam/temperatuur-raam.ttl (138 triples)
+Validation: src/main/input/temperatuur-raam/temperatuur-raam.ttl (134 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 303 inferred triples
+[INFERENCE] 301 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (24 of 170 shapes applied to 21 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (25 of 172 shapes applied to 21 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)

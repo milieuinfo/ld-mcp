@@ -6,4 +6,4 @@ Validation: src/main/input/EnergieManagementSystem/bash/prefixen.ttl (0 triples)
 
 [DISJOINTNESS] ok
 
-[SHACL] no shape applies to this data (170 shapes loaded; graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] no shape applies to this data (172 shapes loaded; graph: asserted data + class hierarchy + types of referenced terms)

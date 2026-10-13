@@ -50,8 +50,10 @@ import org.apache.jena.vocabulary.XSD;
  *   <li>{@code owl:hasValue} → {@code sh:hasValue};</li>
  *   <li>an anonymous property with {@code owl:inverseOf} → {@code sh:inversePath};</li>
  *   <li>convention (not OWL semantics): {@code owl:minCardinality 0} on a class and property cancels
- *       an {@code owl:someValuesFrom} on the same class and property, so that a profile can keep an
- *       existential restriction in the ontology without making it mandatory in the data.</li>
+ *       every lower bound on the same class and property (an {@code owl:someValuesFrom}, the minimum
+ *       of an {@code owl:cardinality} or {@code owl:minCardinality}, a qualified minimum), so that a
+ *       profile can keep an imported restriction in the ontology without making it mandatory in the
+ *       data; maxima and value constraints stay.</li>
  * </ul>
  * What cannot be translated (a union with an anonymous member that is no union itself,
  * {@code owl:complementOf}, {@code owl:oneOf}, property chains, …) is skipped, never translated
@@ -324,14 +326,26 @@ public final class ShaclGenerator {
             }
         }
 
-        /** The property shapes of one path: one for the plain constraints, one per qualified one. */
+        /**
+         * The property shapes of one path: one for the plain constraints, one per qualified one. With
+         * the minCardinality 0 convention ({@code g.relaxed}) every lower bound is left out: the
+         * existentials, the minimum of a plain cardinality and the qualified minimums; maxima and
+         * value constraints stay.
+         */
         List<Resource> propertyShapes(Resource cls, PathGroup g) {
-            PathGroup plain = g;
-            Set<Qualified> qualified = new LinkedHashSet<>(g.qualified);
-            if (!g.relaxed) {
+            Set<Qualified> qualified = new LinkedHashSet<>();
+            for (Qualified q : g.qualified) {
+                Qualified kept = g.relaxed ? new Qualified(q.value(), null, q.max()) : q;
+                if (kept.min() != null || kept.max() != null) {
+                    qualified.add(kept);
+                }
+            }
+            if (g.relaxed) {
+                g.min = null;
+            } else {
                 for (Value v : g.someValues) {
                     if (v instanceof Value.Anything) {
-                        plain.min(1);
+                        g.min(1);
                     } else {
                         qualified.add(new Qualified(v, 1, null));
                     }

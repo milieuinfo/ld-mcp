@@ -1,13 +1,12 @@
 Validation: src/main/input/geluidsmeetnet/alternatief/geluidsmeetnet_emissie.ttl (469 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 944 inferred triples
+[INFERENCE] 1026 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s) (24 of 170 shapes applied to 79 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 4 warning(s) (29 of 172 shapes applied to 79 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:meetpost-F041  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
 - [warning] ex:meetpost-F045  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).
 - [warning] ex:meetpost-M071  path: <http://www.opengis.net/ont/geosparql#hasGeometry>  — R11: give a sosa:SpatialSample a geometry (geo:hasGeometry).

@@ -206,10 +206,14 @@ never collides with a term) with property shapes:
 | anonymous property with `owl:inverseOf` | `sh:inversePath` |
 
 **Convention of this tool (not OWL semantics):** an `owl:minCardinality 0` restriction on a class
-and property cancels an `owl:someValuesFrom` on the same class and property. In OWL it is a
-tautology that changes nothing; here it lets a profile keep an existential restriction in the
-ontology (it defines the class) without making it mandatory in the data. If the values must still be
-of a class, add an `owl:allValuesFrom`.
+and property cancels every lower bound on the same class and property: an `owl:someValuesFrom`, the
+minimum of an `owl:cardinality` or `owl:minCardinality`, and a qualified minimum. Maxima and value
+constraints stay (an `owl:cardinality 1` still gives `sh:maxCount 1`). In OWL it is a tautology that
+changes nothing; here it lets a profile keep an imported restriction in the ontology without making
+it mandatory in the data, e.g. QUDT's `minCardinality 1` on `qudt:hasQuantityKind` of `qudt:Unit`
+for units from a register that has a dimension model of its own. If the values must still be of a
+class, add an `owl:allValuesFrom`. The restriction has to be on the class itself: on a subclass it
+does not cancel the shape of the superclass.
 
 **Not translated**, and never translated into something stricter: a union with an anonymous member
 that is no union itself, an empty union, `owl:complementOf`, `owl:oneOf`, restrictions on a property

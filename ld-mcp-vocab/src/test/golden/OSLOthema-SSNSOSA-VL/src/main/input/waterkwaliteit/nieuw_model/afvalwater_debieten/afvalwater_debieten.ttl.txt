@@ -1,13 +1,12 @@
-Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalwater_debieten.ttl (98 triples)
+Validation: src/main/input/waterkwaliteit/nieuw_model/afvalwater_debieten/afvalwater_debieten.ttl (99 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 208 inferred triples
+[INFERENCE] 219 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] 0 violation(s), 4 warning(s) (22 of 170 shapes applied to 14 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] 0 violation(s), 4 warning(s) (28 of 172 shapes applied to 14 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400006-2023  path: -  — R2: sosa:usedProcedure is strongly recommended (on the observation or its collection).
 - [warning] ex:observatie-jaardebiet-2400007-2023  path: -  — R2: sosa:madeBySensor is strongly recommended (on the observation or its collection).

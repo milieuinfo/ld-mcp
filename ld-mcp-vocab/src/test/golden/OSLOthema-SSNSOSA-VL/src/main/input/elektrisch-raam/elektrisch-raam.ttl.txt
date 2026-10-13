@@ -1,10 +1,9 @@
-Validation: src/main/input/elektrisch-raam/elektrisch-raam.ttl (262 triples)
+Validation: src/main/input/elektrisch-raam/elektrisch-raam.ttl (256 triples)
 
-[VOCAB] 0 error(s), 1 suspect, 0 hint(s)
-- [suspect] Deprecated term: http://www.w3.org/ns/sosa/Result
+[VOCAB] ok
 
-[INFERENCE] 455 inferred triples
+[INFERENCE] 453 inferred triples
 
 [DISJOINTNESS] ok
 
-[SHACL] conforms (24 of 170 shapes applied to 38 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
+[SHACL] conforms (25 of 172 shapes applied to 38 focus node(s); graph: asserted data + class hierarchy + types of referenced terms)
