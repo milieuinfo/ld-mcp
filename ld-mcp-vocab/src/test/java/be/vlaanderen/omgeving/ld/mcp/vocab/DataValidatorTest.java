@@ -254,4 +254,68 @@ class DataValidatorTest {
     void missingFileIsError() {
         assertThrows(IllegalArgumentException.class, () -> validator(false).validate("does/not/exist.ttl"));
     }
+
+    private ValidationResult.Finding onlyVocabFinding(DataValidator v, String ttl) throws IOException {
+        ValidationResult r = v.check(Path.of(data(ttl)), "data.ttl");
+        ValidationResult.Step vocab = r.steps().get(0);
+        assertEquals(ValidationResult.Kind.VOCAB, vocab.kind());
+        assertEquals(1, vocab.findings().size(), vocab.findings().toString());
+        return vocab.findings().get(0);
+    }
+
+    @Test
+    void certaintyAndCodeOfVocabularyFindings() throws IOException {
+        DataValidator v = validator(false);
+        ValidationResult.Finding unknownInLoaded = onlyVocabFinding(v, "ex:r qudt:noSuchProperty unit:M .");
+        assertEquals(ValidationResult.Certainty.ERROR, unknownInLoaded.certainty());
+        assertEquals("unknown-property", unknownInLoaded.code());
+        assertEquals("http://qudt.org/schema/qudt/noSuchProperty", unknownInLoaded.focus());
+
+        ValidationResult.Finding nearMiss = onlyVocabFinding(v, """
+                @prefix qudts: <https://qudt.org/schema/qudt/> .
+                ex:r qudts:hasUnit unit:M .
+                """);
+        assertEquals(ValidationResult.Certainty.SUSPECT, nearMiss.certainty());
+
+        ValidationResult.Finding unloaded = onlyVocabFinding(v, "ex:r <http://vocab.invalid/nope#p> \"x\" .");
+        assertEquals(ValidationResult.Certainty.SUSPECT, unloaded.certainty());
+
+        ValidationResult.Finding unknownClass = onlyVocabFinding(v, "ex:r a voc:Nope .");
+        assertEquals("unknown-class", unknownClass.code());
+        assertEquals(ValidationResult.Certainty.ERROR, unknownClass.certainty());
+    }
+
+    @Test
+    void aRegisteredButUnloadedNamespaceIsOnlyAHint() throws IOException {
+        ValidationResult.Finding f = onlyVocabFinding(validatorWithRegistry(),
+                "ex:r <http://www.w3.org/ns/dcat#keyword> \"x\" .");
+        assertEquals(ValidationResult.Certainty.HINT, f.certainty());
+        assertTrue(f.hints().get(0).contains("is a known vocabulary"), f.hints().toString());
+        ValidationResult.Finding unregistered = onlyVocabFinding(validatorWithRegistry(),
+                "ex:r <http://vocab.invalid/nope#p> \"x\" .");
+        assertEquals(ValidationResult.Certainty.SUSPECT, unregistered.certainty());
+    }
+
+    @Test
+    void mintingIsAnError() throws IOException {
+        ValidationResult r = validator(false).check(Path.of(data("unit:EUR a qudt:Unit .")), "d");
+        ValidationResult.Finding minted = r.steps().get(0).findings().stream()
+                .filter(f -> f.code().equals("minted-in-vocabulary-namespace")).findFirst().orElseThrow();
+        assertEquals(ValidationResult.Certainty.ERROR, minted.certainty());
+    }
+
+    @Test
+    void theResultHasFourStepsAndAParseErrorNone() throws IOException {
+        ValidationResult r = validator(true).check(Path.of(data("ex:r sosa:implements ex:p .")), "d");
+        assertEquals(List.of(ValidationResult.Kind.VOCAB, ValidationResult.Kind.INFERENCE,
+                ValidationResult.Kind.DISJOINTNESS, ValidationResult.Kind.SHACL),
+                r.steps().stream().map(ValidationResult.Step::kind).toList());
+        assertEquals(ValidationResult.Status.SKIPPED, r.steps().get(3).status());
+        Path broken = Files.writeString(dir.resolve("broken.ttl"), "not turtle");
+        ValidationResult bad = validator(false).check(broken, "broken.ttl");
+        assertTrue(bad.steps().isEmpty());
+        assertTrue(bad.header().parseError() != null);
+        assertEquals(-1, bad.header().triples());
+    }
 }
+

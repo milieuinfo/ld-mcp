@@ -5,15 +5,13 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 import org.apache.jena.rdf.model.InfModel;
@@ -40,6 +38,12 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
 import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Certainty;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Finding;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Header;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Kind;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Status;
+import be.vlaanderen.omgeving.ld.mcp.vocab.ValidationResult.Step;
 
 /**
  * Validates an RDF data file against the loaded ontologies, in four steps:
@@ -61,9 +65,6 @@ import be.vlaanderen.omgeving.ld.mcp.core.JsonLd;
  */
 public final class DataValidator {
 
-    /** Maximum number of messages per step; the remainder is only counted. */
-    private static final int MAX_MESSAGES = 50;
-
     private final Model ontology;
     private final VocabIndex index;
     private final Set<String> vocabularyNamespaces;
@@ -72,6 +73,7 @@ public final class DataValidator {
     private final List<Rule> rules;
     private final Shapes shapes;
     private final PrefixRegistry registry;
+    private ValidationResult.Configuration configuration;
 
     /**
      * Prepares the subsets, reasoners and shapes from files; these are reused for every validation.
@@ -153,7 +155,18 @@ public final class DataValidator {
      * @throws IllegalArgumentException if the file does not exist
      */
     public String validate(Path path, String label) {
-        String file = label;
+        return TextReport.render(check(path, label));
+    }
+
+    /**
+     * Validates one data file and returns the result as data.
+     *
+     * @param path  the file; the format is derived from the extension
+     * @param label how the result names the file
+     * @return the result; if the file cannot be parsed, a header with the parse error and no steps
+     * @throws IllegalArgumentException if the file does not exist
+     */
+    public ValidationResult check(Path path, String label) {
         if (!Files.isRegularFile(path)) {
             throw new IllegalArgumentException("File not found: " + path.toAbsolutePath());
         }
@@ -161,125 +174,119 @@ public final class DataValidator {
         try {
             data = JsonLd.load(path);
         } catch (RiotException e) {
-            return "PARSE ERROR in " + file + ": " + e.getMessage();
+            return new ValidationResult(new Header(label, -1, e.getMessage(), configuration), List.of());
         }
+        List<Step> steps = new ArrayList<>();
+        steps.add(vocabulary(data));
+        Model inferred = data;
+        if (rules == null) {
+            steps.add(new Step(Kind.INFERENCE, Status.SKIPPED, List.of(), Map.of()));
+        } else {
+            inferred = inference(data);
+            steps.add(new Step(Kind.INFERENCE, Status.OK, List.of(), Map.of("inferred", inferred.size() - data.size())));
+        }
+        steps.add(disjointness(inferred, data));
+        steps.add(shacl(data));
+        return new ValidationResult(new Header(label, data.size(), null, configuration), steps);
+    }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("Validation: ").append(file).append(" (").append(data.size()).append(" triples)\n");
-        vocabulary(data, sb);
-        Model inferred = inference(data, sb);
-        owl(inferred, data, sb);
-        shacl(data, sb);
-        return sb.toString();
+    /**
+     * Sets the configuration that every result reports in its header.
+     *
+     * @param configuration the configuration, or {@code null}
+     * @return this validator
+     */
+    DataValidator withConfiguration(ValidationResult.Configuration configuration) {
+        this.configuration = configuration;
+        return this;
     }
 
     // ---------------------------------------------------------------- steps
 
-    private void vocabulary(Model data, StringBuilder sb) {
+    private Step vocabulary(Model data) {
         // Sorted by IRI, then by kind: the order of the statements in a model is not stable.
-        Set<String> unknown = new TreeSet<>(Comparator.comparing((String u) -> u.substring(u.indexOf(": ") + 2))
+        Map<String, String> unknown = new TreeMap<>(Comparator.comparing((String u) -> u.substring(u.indexOf(": ") + 2))
                 .thenComparing(Comparator.naturalOrder()));
         data.listStatements().forEachRemaining(st -> {
             String p = st.getPredicate().getURI();
             if (!ontology.containsResource(ontology.createResource(p))) {
-                unknown.add("Unknown property: " + p);
+                unknown.put("Unknown property: " + p, "unknown-property");
             }
             if (st.getPredicate().equals(RDF.type) && st.getObject().isURIResource()) {
                 String c = st.getObject().asResource().getURI();
                 if (!ontology.containsResource(ontology.createResource(c))) {
-                    unknown.add("Unknown class: " + c);
+                    unknown.put("Unknown class: " + c, "unknown-class");
                 }
             } else if (st.getObject().isURIResource()
                     && (isUnknownInVocabulary(st.getResource()) || isNearVocabulary(st.getResource()))) {
-                unknown.add("Unknown resource: " + st.getResource().getURI());
+                unknown.put("Unknown resource: " + st.getResource().getURI(), "unknown-resource");
             }
             if (st.getSubject().isURIResource()) {
                 if (isUnknownInVocabulary(st.getSubject())) {
-                    unknown.add("Resource minted in a vocabulary namespace: " + st.getSubject().getURI());
+                    unknown.put("Resource minted in a vocabulary namespace: " + st.getSubject().getURI(),
+                            "minted-in-vocabulary-namespace");
                 } else if (isNearVocabulary(st.getSubject())) {
-                    unknown.add("Unknown resource: " + st.getSubject().getURI());
+                    unknown.put("Unknown resource: " + st.getSubject().getURI(), "unknown-resource");
                 }
             }
         });
-        if (unknown.isEmpty()) {
-            sb.append("\n[VOCAB] ok\n");
-            return;
-        }
-        sb.append("\n[VOCAB ERROR] ").append(unknown.size()).append(" unknown term(s)\n");
-        List<String> lines = new ArrayList<>();
-        for (String u : unknown) {
-            StringBuilder line = new StringBuilder("- ").append(u);
-            String iri = u.substring(u.indexOf(": ") + 2);
+        List<Finding> findings = new ArrayList<>();
+        unknown.forEach((message, code) -> {
+            String iri = message.substring(message.indexOf(": ") + 2);
             Hint hint = nearMiss(iri);
+            List<String> hints = new ArrayList<>();
             if (hint != null) {
-                line.append("\n    ").append(hint.text());
+                hints.add(hint.text());
             }
             if (hint == null || !hint.termExists()) {
                 // Suggestions from lookup_term: everything after the "Not found" line.
-                index.lookup(iri).lines().skip(1)
-                        .forEach(s -> line.append("\n    ").append(s));
+                index.lookup(iri).lines().skip(1).forEach(hints::add);
             }
-            lines.add(line.toString());
-        }
-        appendCapped(sb, lines);
+            // Established only where the namespace is loaded: there the term certainly does not exist.
+            Certainty certainty = code.startsWith("minted") ? Certainty.ERROR
+                    : hint != null ? hint.certainty()
+                    : vocabularyNamespaces.contains(namespace(iri)) ? Certainty.ERROR : Certainty.SUSPECT;
+            findings.add(new Finding(certainty, code, iri, null, message, hints, null));
+        });
+        return new Step(Kind.VOCAB, findings.isEmpty() ? Status.OK : Status.FINDINGS, findings, Map.of());
     }
 
-    private Model inference(Model data, StringBuilder sb) {
-        if (rules == null) {
-            sb.append("\n[INFERENCE] skipped (no --rules)\n");
-            return data;
-        }
+    private Model inference(Model data) {
         InfModel inf = ModelFactory.createInfModel(new GenericRuleReasoner(rules).bindSchema(structural), data);
-        Model result = ModelFactory.createDefaultModel().add(data).add(inf.getDeductionsModel());
-        sb.append("\n[INFERENCE] ").append(result.size() - data.size()).append(" inferred triples\n");
-        return result;
+        return ModelFactory.createDefaultModel().add(data).add(inf.getDeductionsModel());
     }
 
-    private void owl(Model inferred, Model data, StringBuilder sb) {
+    private Step disjointness(Model inferred, Model data) {
         ValidityReport report = ModelFactory.createInfModel(owlReasoner, inferred).validate();
-        List<String> lines = new ArrayList<>();
-        report.getReports().forEachRemaining(r -> lines.add("- " + shorten(data, r.getDescription())));
-        Collections.sort(lines);
-        if (report.isValid() && lines.isEmpty()) {
-            sb.append("\n[OWL] consistent\n");
-            return;
-        }
-        sb.append("\n[MODEL INVALID] ").append(lines.size()).append(" message(s)")
-                .append(report.isValid() ? " (warnings only)" : "").append('\n');
-        appendCapped(sb, lines);
+        List<Finding> findings = new ArrayList<>();
+        report.getReports().forEachRemaining(r -> findings.add(new Finding(
+                r.isError() ? Certainty.ERROR : Certainty.SUSPECT, "disjointness",
+                r.getExtension() == null ? "" : String.valueOf(r.getExtension()), null,
+                shorten(data, r.getDescription()), List.of(), null)));
+        findings.sort(Comparator.comparing(Finding::message));
+        boolean ok = report.isValid() && findings.isEmpty();
+        return new Step(Kind.DISJOINTNESS, ok ? Status.OK : Status.FINDINGS, findings, Map.of("valid", report.isValid()));
     }
 
-    private void shacl(Model data, StringBuilder sb) {
+    private Step shacl(Model data) {
         if (shapes == null) {
-            sb.append("\n[SHACL] skipped (no --shapes or --generate-shapes)\n");
-            return;
+            return new Step(Kind.SHACL, Status.SKIPPED, List.of(), Map.of());
         }
         ValidationReport report = ShaclValidator.get().validate(shapes, data.getGraph());
         if (report.conforms()) {
-            sb.append("\n[SHACL] conforms\n");
-            return;
+            return new Step(Kind.SHACL, Status.OK, List.of(), Map.of());
         }
-        // Violations first, then warnings, then info; only the latter two are marked.
-        Map<Severity, List<String>> bySeverity = new LinkedHashMap<>();
-        for (Severity s : List.of(Severity.Violation, Severity.Warning, Severity.Info)) {
-            bySeverity.put(s, new ArrayList<>());
-        }
-        report.getEntries().forEach(e -> bySeverity.computeIfAbsent(e.severity(), s -> new ArrayList<>())
-                .add("- " + (e.severity() == Severity.Violation ? "" : "[" + severityName(e.severity()) + "] ")
-                        + data.shortForm(e.focusNode().toString())
-                        + "  path: " + (e.resultPath() == null ? "-" : shorten(data, e.resultPath().toString()))
-                        + "  — " + e.message()));
-        List<String> counts = new ArrayList<>();
-        List<String> lines = new ArrayList<>();
-        bySeverity.forEach((severity, entries) -> {
-            Collections.sort(entries);
-            if (!entries.isEmpty() || severity == Severity.Violation) {
-                counts.add(entries.size() + " " + severityName(severity) + "(s)");
-            }
-            lines.addAll(entries);
+        List<Finding> findings = new ArrayList<>();
+        report.getEntries().forEach(e -> {
+            String severity = severityName(e.severity());
+            Certainty certainty = e.severity() == Severity.Violation ? Certainty.ERROR
+                    : e.severity() == Severity.Warning ? Certainty.SUSPECT : Certainty.HINT;
+            findings.add(new Finding(certainty, "shacl", data.shortForm(e.focusNode().toString()),
+                    e.resultPath() == null ? null : shorten(data, e.resultPath().toString()),
+                    e.message(), List.of(), severity));
         });
-        sb.append("\n[SHACL] ").append(String.join(", ", counts)).append('\n');
-        appendCapped(sb, lines);
+        findings.sort(Comparator.comparing(TextReport::shaclLine));
+        return new Step(Kind.SHACL, Status.FINDINGS, findings, Map.of());
     }
 
     /** "violation", "warning" or "info"; for a custom severity, its local name in lower case. */
@@ -357,13 +364,6 @@ public final class DataValidator {
         }
     }
 
-    private static void appendCapped(StringBuilder sb, List<String> lines) {
-        lines.stream().limit(MAX_MESSAGES).forEach(l -> sb.append(l).append('\n'));
-        if (lines.size() > MAX_MESSAGES) {
-            sb.append("… and ").append(lines.size() - MAX_MESSAGES).append(" more messages\n");
-        }
-    }
-
     /** An IRI in a namespace of the ontologies that the ontologies do not mention. */
     private boolean isUnknownInVocabulary(Resource r) {
         return vocabularyNamespaces.contains(namespace(r.getURI())) && !ontology.containsResource(r);
@@ -388,7 +388,7 @@ public final class DataValidator {
      * @param termExists whether the hint names an existing term (which makes further suggestions
      *                   superfluous) rather than only a namespace
      */
-    private record Hint(String text, boolean termExists) {
+    private record Hint(String text, boolean termExists, Certainty certainty) {
     }
 
     /**
@@ -403,7 +403,8 @@ public final class DataValidator {
         List<String> variants = variants(iri);
         for (String v : variants) {
             if (ontology.containsResource(ontology.createResource(v))) {
-                return new Hint("Did you mean <" + v + ">? (differs only in " + difference(iri, v) + ")", true);
+                return new Hint("Did you mean <" + v + ">? (differs only in " + difference(iri, v) + ")", true,
+                        Certainty.SUSPECT);
             }
         }
         String ns = namespace(iri);
@@ -413,7 +414,7 @@ public final class DataValidator {
         for (String v : variants) {
             if (vocabularyNamespaces.contains(namespace(v))) {
                 return new Hint("Namespace <" + ns + "> is not loaded; did you mean <"
-                        + namespace(v) + ">? (differs only in " + difference(iri, v) + ")", false);
+                        + namespace(v) + ">? (differs only in " + difference(iri, v) + ")", false, Certainty.SUSPECT);
             }
         }
         if (registry == null || isExampleDomain(iri)) {
@@ -422,18 +423,18 @@ public final class DataValidator {
         List<String> known = registry.prefixes(ns);
         if (!known.isEmpty()) {
             return new Hint("Namespace <" + ns + "> is a known vocabulary (" + prefixNames(known)
-                    + " in the prefix registry), but it is not loaded", false);
+                    + " in the prefix registry), but it is not loaded", false, Certainty.HINT);
         }
         for (String v : variants) {
             List<String> prefixes = registry.prefixes(namespace(v));
             if (!prefixes.isEmpty()) {
                 return new Hint("Namespace <" + ns + "> is neither loaded nor registered; did you mean <"
                         + namespace(v) + "> (" + prefixNames(prefixes) + " in the prefix registry)? "
-                        + "(differs only in " + difference(iri, v) + ")", false);
+                        + "(differs only in " + difference(iri, v) + ")", false, Certainty.SUSPECT);
             }
         }
         return new Hint("Namespace <" + ns + "> is neither loaded nor in the prefix registry; "
-                + "check it for a typo, or load its ontology", false);
+                + "check it for a typo, or load its ontology", false, Certainty.SUSPECT);
     }
 
     /**
