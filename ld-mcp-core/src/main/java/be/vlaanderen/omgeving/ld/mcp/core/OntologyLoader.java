@@ -54,10 +54,42 @@ public final class OntologyLoader {
      *         declaration of every non-empty namespace prefix
      */
     public static Model load(List<Path> paths, Set<Path> exclude) {
+        return loadReporting(paths, exclude).model();
+    }
+
+    /**
+     * The outcome of loading: the model, and what could not be loaded.
+     *
+     * @param model    the triples of all files that parsed successfully
+     * @param problems one line per path that does not exist and per file that was skipped
+     */
+    public record Loaded(Model model, List<String> problems) {
+    }
+
+    /**
+     * Loads all supported RDF files under the given paths into one model, except the excluded ones,
+     * and reports what was skipped, so that a caller can tell the user why a term is missing.
+     *
+     * @param paths   files and/or directories; directories are walked recursively
+     * @param exclude files to skip even if they lie under {@code paths}
+     * @return the model and the problems
+     */
+    public static Loaded loadReporting(List<Path> paths, Set<Path> exclude) {
         Model model = ModelFactory.createDefaultModel();
-        files(paths, exclude).forEach(file -> read(model, file));
+        List<String> problems = new ArrayList<>();
+        for (Path path : paths) {
+            if (!Files.exists(path)) {
+                problems.add("path does not exist: " + path);
+            }
+        }
+        for (Path file : files(paths, exclude)) {
+            String error = read(model, file);
+            if (error != null) {
+                problems.add("skipped " + file + " (parse error: " + error + ")");
+            }
+        }
         LOG.info("{} triples loaded from {}", model.size(), paths);
-        return model;
+        return new Loaded(model, List.copyOf(problems));
     }
 
     /**
@@ -107,7 +139,8 @@ public final class OntologyLoader {
         return SUPPORTED.stream().anyMatch(name::endsWith);
     }
 
-    private static void read(Model model, Path file) {
+    /** Reads one file into the model; returns the parse error, or {@code null}. */
+    private static String read(Model model, Path file) {
         try {
             Model part = JsonLd.load(file);
             // Copy the triples only: Model.add(Model) would also copy the prefixes (including the empty one).
@@ -119,8 +152,10 @@ public final class OntologyLoader {
                     model.setNsPrefix(prefix, ns);
                 }
             });
+            return null;
         } catch (RuntimeException e) {
             LOG.warn("Skipped (parse error): {} — {}", file, e.getMessage());
+            return e.getMessage();
         }
     }
 }

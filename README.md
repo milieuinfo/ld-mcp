@@ -43,6 +43,14 @@ path, size and modification time of those files with the previous load; if anyth
 added, removed or modified, it reloads everything and regenerates the shapes. A restart is only
 needed after building a new jar.
 
+A faulty file does not take the server down. An ontology file that does not parse is skipped;
+rules or shapes that do not parse are replaced by the last version that did, or, at start-up,
+their step is skipped; a prefix registry that cannot be read only costs its hints. Every tool
+output then begins with `Configuration problems:` and one line per problem, until the file is
+fixed. A load that fails altogether keeps the previous configuration, and is not retried before
+the next change. An `--ontologies`, `--rules` or `--shapes` path that does not exist at start-up
+stops the server: a typing error in the configuration should not silently skip a step.
+
 ### Network policy
 
 `lov_search` and `vocabulary_profile` fetch URLs that come from the model, and from content the

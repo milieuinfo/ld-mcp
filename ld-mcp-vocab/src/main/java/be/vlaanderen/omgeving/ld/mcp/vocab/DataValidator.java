@@ -74,7 +74,7 @@ public final class DataValidator {
     private final PrefixRegistry registry;
 
     /**
-     * Prepares the subsets, reasoners and shapes; these are reused for every validation.
+     * Prepares the subsets, reasoners and shapes from files; these are reused for every validation.
      *
      * @param ontology       the loaded ontologies
      * @param index          index over the same ontologies, used for suggestions on unknown terms
@@ -84,9 +84,29 @@ public final class DataValidator {
      *                       with {@code shapes}, if given); without either, SHACL is skipped
      * @param registry       registry of well-known namespaces, used in hints for namespaces that
      *                       are not loaded; or {@code null}
+     * @throws RuntimeException if the rules or shapes cannot be parsed
      */
     public DataValidator(Model ontology, VocabIndex index, Path rules, Path shapes,
                          boolean generateShapes, PrefixRegistry registry) {
+        this(ontology, index, rules == null ? null : parseRules(rules),
+                shapes(generateShapes ? ShaclGenerator.generate(ontology) : null,
+                        shapes == null ? null : JsonLd.load(shapes)),
+                registry);
+    }
+
+    /**
+     * Prepares the subsets and the reasoner; the rules and shapes are given parsed, so that the
+     * caller decides what happens when one of them cannot be read ({@link Workspace}).
+     *
+     * @param ontology the loaded ontologies
+     * @param index    index over the same ontologies, used for suggestions on unknown terms
+     * @param rules    the rules for the inference step, or {@code null} to skip it
+     * @param shapes   the shapes, or {@code null} to skip SHACL
+     * @param registry registry of well-known namespaces, used in hints for namespaces that are not
+     *                 loaded; or {@code null}
+     */
+    public DataValidator(Model ontology, VocabIndex index, List<Rule> rules, Shapes shapes,
+                         PrefixRegistry registry) {
         this.ontology = ontology;
         this.index = index;
         this.vocabularyNamespaces = new HashSet<>();
@@ -96,9 +116,20 @@ public final class DataValidator {
                 RDFS.subClassOf, RDFS.subPropertyOf, OWL.inverseOf, RDFS.domain, RDFS.range);
         this.owlReasoner = ReasonerRegistry.getOWLMiniReasoner()
                 .bindSchema(disjointness(ontology));
-        this.rules = rules == null ? null : Rule.parseRules(read(rules));
-        this.shapes = shapes(ontology, shapes, generateShapes);
+        this.rules = rules;
+        this.shapes = shapes;
         this.registry = registry;
+    }
+
+    /**
+     * Parses a Jena rules file.
+     *
+     * @param file the rules file
+     * @return the rules
+     * @throws RuntimeException if the file cannot be read or parsed
+     */
+    static List<Rule> parseRules(Path file) {
+        return Rule.parseRules(read(file));
     }
 
     /**
@@ -247,16 +278,23 @@ public final class DataValidator {
 
     // ---------------------------------------------------------------- helpers
 
-    private static Shapes shapes(Model ontology, Path file, boolean generate) {
-        if (file == null && !generate) {
+    /**
+     * Combines generated and hand-written shapes.
+     *
+     * @param generated shapes generated from the ontology, or {@code null}
+     * @param file      shapes read from files, or {@code null}
+     * @return the shapes, or {@code null} if neither is given
+     */
+    static Shapes shapes(Model generated, Model file) {
+        if (generated == null && file == null) {
             return null;
         }
         Model all = ModelFactory.createDefaultModel();
-        if (generate) {
-            all.add(ShaclGenerator.generate(ontology));
+        if (generated != null) {
+            all.add(generated);
         }
         if (file != null) {
-            all.add(JsonLd.load(file));
+            all.add(file);
         }
         return Shapes.parse(all);
     }

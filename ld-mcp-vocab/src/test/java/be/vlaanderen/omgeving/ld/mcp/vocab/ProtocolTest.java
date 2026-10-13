@@ -162,4 +162,22 @@ class ProtocolTest {
         McpHarness.ToolResult r = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString())));
         assertTrue(r.text().contains("(2 triples)") && r.text().contains("[VOCAB] ok"), r.text());
     }
+
+    @Test
+    void brokenRulesDuringASessionDoNotTakeTheToolsDown() throws IOException {
+        Path rules = Files.writeString(dir.resolve("r.rules"), "");
+        start("--rules", rules.toString());
+        Files.writeString(rules, "[broken: (?x rdf:type ?c) -> ");
+        Files.setLastModifiedTime(rules, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() + 5000));
+        Path data = Files.writeString(dir.resolve("data.ttl"), "<urn:a> a <https://example.org/voc/Thing> .");
+
+        McpHarness.ToolResult lookup = harness.callTool("lookup_term",
+                McpHarness.args(Map.of("term", "https://example.org/voc/Thing")));
+        assertFalse(lookup.isError(), lookup.text());
+        assertTrue(lookup.text().startsWith("Configuration problems:\n- rules file "), lookup.text());
+        McpHarness.ToolResult report = harness.callTool("validate_file", McpHarness.args(Map.of("path", data.toString())));
+        assertFalse(report.isError(), report.text());
+        assertTrue(report.text().contains("using the previous rules") && report.text().contains("[VOCAB] ok"),
+                report.text());
+    }
 }

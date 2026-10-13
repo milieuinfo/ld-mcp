@@ -76,8 +76,8 @@ public final class VocabServer {
         ServerArgs parsed = ServerArgs.parse(args);
         List<Path> paths = parsed.required("ontologies").stream().map(Path::of).toList();
         Workspace workspace = new Workspace(paths,
-                parsed.first("rules").map(Path::of).orElse(null),
-                parsed.first("shapes").map(Path::of).orElse(null),
+                parsed.first("rules").map(Path::of).stream().toList(),
+                parsed.first("shapes").map(Path::of).stream().toList(),
                 parsed.flag("generate-shapes"),
                 parsed.first("prefix-registry").map(Path::of).orElse(null));
         int termCount = workspace.current().index().size();
@@ -117,7 +117,10 @@ public final class VocabServer {
                                         Map.of("term", Tools.string(
                                                 "Prefixed name (sosa:Observation) or full IRI")),
                                         List.of("term")),
-                                a -> workspace.current().index().lookup(Tools.requiredString(a, "term"))),
+                                a -> {
+                                    Workspace.State state = workspace.current();
+                                    return state.withProblems(state.index().lookup(Tools.requiredString(a, "term")));
+                                }),
                         Tools.textTool("search_terms",
                                 "Finds classes and properties whose local name or label contains the "
                                         + "query (case-insensitive).",
@@ -125,8 +128,11 @@ public final class VocabServer {
                                         Map.of("query", Tools.string("Text to search for, e.g. 'sample'"),
                                                 "limit", Tools.integer("Maximum number of results (default 25)")),
                                         List.of("query")),
-                                a -> workspace.current().index().search(Tools.requiredString(a, "query"),
-                                        Tools.optionalInt(a, "limit", 25))),
+                                a -> {
+                                    Workspace.State state = workspace.current();
+                                    return state.withProblems(state.index().search(Tools.requiredString(a, "query"),
+                                            Tools.optionalInt(a, "limit", 25)));
+                                }),
                         Tools.textTool("validate_file",
                                 "Validates an RDF data file (.ttl, …): unknown properties/classes "
                                         + "(with suggestions, including http/https and '#'/'/' "
@@ -137,7 +143,10 @@ public final class VocabServer {
                                         Map.of("path", Tools.string(
                                                 "Path to the file, relative to the project root")),
                                         List.of("path")),
-                                a -> workspace.current().validator().validate(Tools.requiredString(a, "path"))),
+                                a -> {
+                                    Workspace.State state = workspace.current();
+                                    return state.withProblems(state.validator().validate(Tools.requiredString(a, "path")));
+                                }),
                         Tools.textTool("lov_search",
                                 "Searches Linked Open Vocabularies (LOV) for candidate terms and marks "
                                         + "which ones are already loaded. LOV ranks by text match: a hit "

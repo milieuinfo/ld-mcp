@@ -2,6 +2,7 @@ package be.vlaanderen.omgeving.ld.mcp.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -79,5 +80,16 @@ class OntologyLoaderTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void reportsSkippedFilesAndMissingPaths() throws IOException {
+        Files.writeString(dir.resolve("a.ttl"), "<urn:a> <urn:p> <urn:o> .");
+        Files.writeString(dir.resolve("b.ttl"), "this is not turtle");
+        OntologyLoader.Loaded loaded = OntologyLoader.loadReporting(List.of(dir, dir.resolve("gone")), Set.of());
+        assertEquals(1, loaded.model().size());
+        assertEquals(2, loaded.problems().size(), loaded.problems().toString());
+        assertEquals("path does not exist: " + dir.resolve("gone"), loaded.problems().get(0));
+        assertTrue(loaded.problems().get(1).startsWith("skipped " + dir.resolve("b.ttl") + " (parse error: "));
     }
 }
