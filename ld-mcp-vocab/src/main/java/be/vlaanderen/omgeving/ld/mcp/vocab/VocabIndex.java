@@ -336,7 +336,7 @@ public final class VocabIndex {
                 .map(t -> shortForm(t.getURI()))
                 .toList();
         StringBuilder sb = new StringBuilder("Not found: ").append(term);
-        if (!iri.equals(term)) {
+        if (!iri.equals(term) && !term.strip().equals("<" + iri + ">")) {
             sb.append("  <").append(iri).append(">");
         }
         sb.append('\n');
@@ -449,13 +449,16 @@ public final class VocabIndex {
                 .toList();
     }
 
-    private static int languageRank(Literal l) {
-        return switch (l.getLanguage()) {
-            case "nl" -> 0;
-            case "en" -> 1;
-            case "" -> 2;
-            default -> 3;
-        };
+    /** Dutch first (also nl-BE, nl-NL), then English (also en-GB, …), then no language, then others. */
+    static int languageRank(Literal l) {
+        String lang = l.getLanguage().toLowerCase(Locale.ROOT);
+        if (lang.equals("nl") || lang.startsWith("nl-")) {
+            return 0;
+        }
+        if (lang.equals("en") || lang.startsWith("en-")) {
+            return 1;
+        }
+        return lang.isEmpty() ? 2 : 3;
     }
 
     private String render(RDFNode node) {

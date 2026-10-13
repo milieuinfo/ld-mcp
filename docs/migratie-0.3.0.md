@@ -214,3 +214,19 @@ sosa:ExecutionCollection) (generated from the OWL restrictions)`. Bij een meldin
 toe als het bericht ze niet noemt: `… (value: ex:x)`.
 
 **Golden-diff:** enkel de berichttekst van de 93 gegenereerde meldingen (waterlopen, r-factor).
+
+## 3.12 Weergave en kleine fouten
+
+- Afkorten enkel op een namespacegrens en met de langste namespace: geen `ex:voc/part` of
+  `waterloop:waterloopsegment/101021` (ongeldige CURIE's) meer; zulke IRI's staan voluit.
+- "Not found" toont het IRI niet meer twee keer; `nl-BE`, `en-GB` … tellen als Nederlands/Engels.
+- De near-miss-uitleg is neutraal: de identifier is het IRI dat de ontologie definieert (OSLO gebruikt
+  `https`).
+- `vocabulary_profile`: `owl:AnnotationProperty` telt niet mee bij "without domain/range"; verbanden
+  binnen een kernvocabularium zelf tellen niet als "links to the core"; het alignmentregister
+  matcht op dezelfde namespace (met of zonder afsluitende `/`/`#`), niet meer op een prefix
+  (`http://www.w3.org/ns/` matchte alle W3C-vocabularia).
+- Een onleesbaar alignmentregister staat in het profiel (sinds 2.3), niet enkel op stderr.
+
+**Golden-diff:** `waterlopen_meetplaatsen`: segmenten voluit in plaats van als ongeldige CURIE (en
+daardoor een andere volgorde).

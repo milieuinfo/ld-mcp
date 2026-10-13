@@ -101,16 +101,32 @@ public final class AlignmentRegister {
     }
 
     /**
-     * Returns the modules that connect a namespace: one of their namespaces is a prefix of it, or
-     * it is a prefix of one of theirs.
+     * Returns the modules that connect a namespace: one of their namespaces is the same namespace,
+     * with or without a trailing {@code /} or {@code #}. Not a prefix match: a short namespace such
+     * as {@code http://www.w3.org/ns/} would match every W3C vocabulary.
      *
      * @param namespace the namespace of a vocabulary
      * @return the matching modules, sorted by IRI
      */
     public List<Entry> matching(String namespace) {
         return entries.stream()
-                .filter(e -> e.namespaces().stream().anyMatch(n -> namespace.startsWith(n) || n.startsWith(namespace)))
+                .filter(e -> e.namespaces().stream().anyMatch(n -> sameNamespace(n, namespace)))
                 .toList();
+    }
+
+    /**
+     * Whether two namespace IRIs are the same, with or without a trailing {@code /} or {@code #}.
+     *
+     * @param a a namespace
+     * @param b a namespace
+     * @return whether they name the same vocabulary
+     */
+    static boolean sameNamespace(String a, String b) {
+        return bare(a).equals(bare(b));
+    }
+
+    private static String bare(String ns) {
+        return ns.endsWith("/") || ns.endsWith("#") ? ns.substring(0, ns.length() - 1) : ns;
     }
 
     /**

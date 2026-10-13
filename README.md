@@ -154,8 +154,8 @@ from Jena, so `rdfs:lable` is still unknown). `lookup_term` uses the same defini
   the data uses it).
 
 Near misses get a hint. If an unknown IRI differs from a known term only in the scheme
-(`https` instead of `http`, common because many sites redirect to `https` while the `http` IRI
-is the identifier) and/or the namespace separator (`#` versus `/`), the report says
+(`https` instead of `http`; the identifier is exactly the IRI the ontology defines, and a site
+that redirects one form to the other does not make both identifiers) and/or the namespace separator (`#` versus `/`), the report says
 `Did you mean <http://…>?`; if only the namespace matches, it says
 `Namespace <…> is not loaded; did you mean <…>?`.
 

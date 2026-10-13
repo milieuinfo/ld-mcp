@@ -408,7 +408,7 @@ class DataValidatorTest {
     void aShapeOnASuperclassTargetsInstancesOfASubclass() throws IOException {
         String out = hierarchyValidator().validate(data("ex:s a voc:Special ."));
         assertTrue(out.contains("[SHACL] 1 violation(s)"), out);
-        assertTrue(out.contains("- ex:s  path: ") && out.contains("minCount[1]"), out);
+        assertTrue(out.contains("- ex:s  path: voc:part  — minCount[1]"), out);
     }
 
     @Test

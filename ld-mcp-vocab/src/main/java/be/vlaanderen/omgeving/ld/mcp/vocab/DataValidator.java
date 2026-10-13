@@ -353,7 +353,7 @@ public final class DataValidator {
             String severity = severityName(e.severity());
             Certainty certainty = e.severity() == Severity.Violation ? Certainty.ERROR
                     : e.severity() == Severity.Warning ? Certainty.SUSPECT : Certainty.HINT;
-            findings.add(new Finding(certainty, "shacl", data.shortForm(e.focusNode().toString()),
+            findings.add(new Finding(certainty, "shacl", shortNode(data, e.focusNode()),
                     e.resultPath() == null ? null : shorten(data, e.resultPath().toString()),
                     withValue(e, data), List.of(), severity));
         });
@@ -417,6 +417,15 @@ public final class DataValidator {
                 "graph", SHACL_GRAPH);
     }
 
+    /** A node as the report shows it: a prefixed name where one fits, else the IRI or blank node id. */
+    private static String shortNode(PrefixMapping prefixes, Node n) {
+        if (!n.isURI()) {
+            return n.toString();
+        }
+        String s = shorten(prefixes, "<" + n.getURI() + ">");
+        return s.startsWith("<") ? n.getURI() : s;
+    }
+
     /** Components whose results are about one value, which a custom sh:message does not name. */
     private static final Set<String> VALUE_COMPONENTS = Set.of("ClassConstraintComponent",
             "DatatypeConstraintComponent", "NodeKindConstraintComponent", "OrConstraintComponent",
@@ -431,7 +440,7 @@ public final class DataValidator {
                 || !VALUE_COMPONENTS.contains(component.getLocalName())) {
             return message;
         }
-        String shown = value.isURI() ? data.shortForm(value.getURI()) : value.isLiteral()
+        String shown = value.isURI() ? shortNode(data, value) : value.isLiteral()
                 ? "\"" + Untrusted.literal(value.getLiteralLexicalForm()) + "\"" : "[blank node]";
         return message.contains(shown) || value.isURI() && message.contains(value.getURI())
                 ? message : message + " (value: " + shown + ")";
@@ -702,9 +711,9 @@ public final class DataValidator {
 
     /**
      * Variants of an IRI that differ only in the scheme ({@code http} versus {@code https}) and/or
-     * the namespace separator ({@code #} versus {@code /}). Both are common mistakes; many sites,
-     * for instance, redirect {@code http} to {@code https}, while the {@code http} IRI is the
-     * identifier.
+     * the namespace separator ({@code #} versus {@code /}). Both are common mistakes: the identifier
+     * is exactly the IRI the ontology defines, and a site that redirects one form to the other does
+     * not make both identifiers.
      *
      * @param iri an IRI
      * @return the variants: scheme first, then separator, then both; never the IRI itself
@@ -742,15 +751,21 @@ public final class DataValidator {
         return iri.substring(0, Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1);
     }
 
-    /** Shortens IRIs in free text (OWL messages) using the prefixes of the data file. */
-    private static String shorten(PrefixMapping prefixes, String text) {
+    /**
+     * Shortens IRIs in free text (OWL messages, SHACL paths) using the prefixes of the data file,
+     * only where the rest is a valid local name (no {@code /} or {@code #}), and with the longest
+     * matching namespace: never {@code ex:voc/part} when {@code voc:} fits.
+     */
+    static String shorten(PrefixMapping prefixes, String text) {
+        List<Map.Entry<String, String>> byLength = new ArrayList<>(prefixes.getNsPrefixMap().entrySet());
+        byLength.removeIf(e -> e.getKey().isEmpty());
+        byLength.sort(Comparator.comparingInt((Map.Entry<String, String> e) -> e.getValue().length()).reversed());
         String out = text;
-        for (var e : prefixes.getNsPrefixMap().entrySet()) {
-            if (!e.getKey().isEmpty()) {
-                String ns = Pattern.quote(e.getValue());
-                out = out.replaceAll("<" + ns + "([^>\\s]*)>", e.getKey() + ":$1")
-                        .replace(e.getValue(), e.getKey() + ":");
-            }
+        for (var e : byLength) {
+            String ns = Pattern.quote(e.getValue());
+            String prefix = java.util.regex.Matcher.quoteReplacement(e.getKey() + ":");
+            out = out.replaceAll("<" + ns + "([\\w\\-.]*)>", prefix + "$1")
+                    .replaceAll("(?<![<\\w/#.:-])" + ns + "([\\w\\-.]+)(?![\\w\\-/#>])", prefix + "$1");
         }
         return out;
     }

@@ -222,7 +222,7 @@ public final class VocabularyProfiler {
                     .append(" known module(s) connect this namespace\n");
             for (AlignmentRegister.Entry e : found) {
                 List<String> others = e.namespaces().stream()
-                        .filter(n -> !(namespace.startsWith(n) || n.startsWith(namespace))).toList();
+                        .filter(n -> !AlignmentRegister.sameNamespace(n, namespace)).toList();
                 sb.append("- <").append(Untrusted.literal(e.iri())).append(">")
                         .append(e.title().isEmpty() ? "" : " " + Untrusted.literal(e.title()))
                         .append("\n  connects with: ").append(String.join(", ", others))
@@ -377,11 +377,17 @@ public final class VocabularyProfiler {
         sb.append("classes: ").append(classes.size()).append(", ")
                 .append(missing(m, classes, RDFS.label, SKOS.prefLabel)).append(" without label, ")
                 .append(missing(m, classes, RDFS.comment, SKOS.definition, DCT_DESCRIPTION)).append(" without definition\n");
+        // Annotation properties have no domain or range by design: not counted there.
+        List<Resource> withAxioms = properties.stream()
+                .filter(p -> !m.contains(p, RDF.type, OWL.AnnotationProperty)).toList();
         sb.append("properties: ").append(properties.size()).append(", ")
                 .append(missing(m, properties, RDFS.label, SKOS.prefLabel)).append(" without label, ")
                 .append(missing(m, properties, RDFS.comment, SKOS.definition, DCT_DESCRIPTION)).append(" without definition, ")
-                .append(missing(m, properties, RDFS.domain)).append(" without domain, ")
-                .append(missing(m, properties, RDFS.range)).append(" without range\n");
+                .append(missing(m, withAxioms, RDFS.domain)).append(" without domain, ")
+                .append(missing(m, withAxioms, RDFS.range)).append(" without range")
+                .append(withAxioms.size() < properties.size()
+                        ? " (of " + withAxioms.size() + " that are no owl:AnnotationProperty)" : "")
+                .append('\n');
 
         // owl:deprecated false is not a deprecation; owl:DeprecatedClass/Property is one.
         Set<Resource> deprecatedTerms = new java.util.HashSet<>();
@@ -406,7 +412,10 @@ public final class VocabularyProfiler {
             }
             String s = st.getSubject().getURI();
             if (s.startsWith(namespace)) {
-                coreOf(st.getObject()).ifPresent(ns -> links.merge(ns, 1, Integer::sum));
+                // Links inside the vocabulary are no links to the core, also when it is a core vocabulary.
+                if (!(st.getObject().isURIResource() && st.getObject().asResource().getURI().startsWith(namespace))) {
+                    coreOf(st.getObject()).ifPresent(ns -> links.merge(ns, 1, Integer::sum));
+                }
             } else {
                 foreignCount++;
                 if (foreign.size() < EXAMPLES) {
