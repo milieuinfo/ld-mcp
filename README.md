@@ -354,7 +354,8 @@ jar into `tools/` (listed in the project's `.gitignore`):
         "--rules", "path/to/rules.rules",
         "--generate-shapes",
         "--shapes", "oslo-ld-kit/rules/ssn-sosa-rules.ttl",
-        "--prefix-registry", "path/to/prefix.cc.ttl"
+        "--prefix-registry", "path/to/prefix.cc.ttl",
+        "--alignments", "oslo-ld-kit/registers/alignments.ttl"
       ]
     }
   }
@@ -376,7 +377,9 @@ The SHACL rules for SSN/SOSA data examples (R2, R3, R5, …) and the guide that 
 validation report are in [oslo-ld-kit](https://github.com/milieuinfo/oslo-ld-kit), not in this
 repository: the server stays project-neutral. A project adds the kit as a git subtree in
 `oslo-ld-kit/` and passes its rules with `--shapes oslo-ld-kit/rules/ssn-sosa-rules.ttl`, as in
-the example above. Messages from those rules begin with the rule number (`R2: …`). After the kit
+the example above. Messages from those rules begin with the rule number (`R2: …`). The kit's
+register of alignment modules goes in with `--alignments oslo-ld-kit/registers/alignments.ttl`, for
+the section *Alignments* of `vocabulary_profile`. After the kit
 has been updated in the project, the server reloads the rules on the next tool call; in the
 client, `/mcp` → `ld-vocab` → Reconnect is only needed after a new jar. See the kit's
 README for how to add and update it, and
