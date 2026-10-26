@@ -74,6 +74,24 @@ class ProtocolTest {
         assertTrue(r.text().contains("owl:Class"), r.text());
     }
 
+    /**
+     * A client may call tools in parallel. Every call gets its answer, and the server keeps
+     * answering afterwards: concurrent answers must not be lost or stop the transport.
+     */
+    @Test
+    void answersConcurrentCalls() throws IOException {
+        McpHarness h = start();
+        List<String> calls = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            calls.add(McpHarness.args(Map.of("term", "https://example.org/voc/Thing")));
+        }
+        for (JsonObject answer : h.callAll("lookup_term", calls)) {
+            assertTrue(answer.hasKey("result"), answer.toString());
+        }
+        McpHarness.ToolResult after = h.callTool("lookup_term", McpHarness.args(Map.of("term", "https://example.org/voc/name")));
+        assertTrue(after.text().contains("owl:DatatypeProperty"), after.text());
+    }
+
     @Test
     void validatesAFile() throws IOException {
         start();

@@ -93,6 +93,41 @@ public final class McpHarness implements AutoCloseable {
     }
 
     /**
+     * Calls a tool once per argument object, sending all requests before reading any answer, as
+     * a client does that calls tools in parallel.
+     *
+     * @param name      the tool name
+     * @param arguments the arguments of each call, as JSON object literals
+     * @return the full JSON-RPC answers, in the order of the arguments
+     * @throws AssertionError if an answer does not arrive within the timeout
+     */
+    public synchronized List<JsonObject> callAll(String name, List<String> arguments) {
+        int first = nextId;
+        for (String a : arguments) {
+            send("{\"jsonrpc\":\"2.0\",\"id\":" + nextId++ + ",\"method\":\"tools/call\",\"params\":"
+                    + "{\"name\":\"" + name + "\",\"arguments\":" + a + "}}");
+        }
+        JsonObject[] answers = new JsonObject[arguments.size()];
+        int missing = arguments.size();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
+        while (missing > 0) {
+            JsonObject m = poll(deadline);
+            if (m == null) {
+                throw new AssertionError(missing + " of " + arguments.size() + " calls of " + name
+                        + " unanswered after " + TIMEOUT_SECONDS + " s");
+            }
+            if (m.hasKey("id") && m.get("id").isNumber()) {
+                int i = m.get("id").getAsNumber().value().intValue() - first;
+                if (i >= 0 && i < answers.length && answers[i] == null) {
+                    answers[i] = m;
+                    missing--;
+                }
+            }
+        }
+        return List.of(answers);
+    }
+
+    /**
      * A tool result.
      *
      * @param text    the concatenated text content
@@ -120,20 +155,24 @@ public final class McpHarness implements AutoCloseable {
         send("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"method\":\"" + method + "\",\"params\":" + params + "}");
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
         while (true) {
-            long left = deadline - System.nanoTime();
-            JsonObject m;
-            try {
-                m = left <= 0 ? null : messages.poll(left, TimeUnit.NANOSECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException(e);
-            }
+            JsonObject m = poll(deadline);
             if (m == null) {
                 throw new AssertionError("No answer to " + method + " within " + TIMEOUT_SECONDS + " s");
             }
             if (m.hasKey("id") && m.get("id").isNumber() && m.get("id").getAsNumber().value().intValue() == id) {
                 return m;
             }
+        }
+    }
+
+    /** The next message from the server, or null if none arrives before the deadline. */
+    private JsonObject poll(long deadline) {
+        long left = deadline - System.nanoTime();
+        try {
+            return left <= 0 ? null : messages.poll(left, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
         }
     }
 

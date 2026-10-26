@@ -47,6 +47,12 @@ public final class StdioServer {
      * threads until it is closed. {@link #run} uses it with stdin and stdout; tests use it with
      * in-memory streams.
      *
+     * <p>Tool calls run one at a time, on the thread that reads the requests
+     * ({@code immediateExecution}). By default the SDK runs them in parallel, and the stdio
+     * transport of SDK 2.0.1 cannot write concurrent answers: its outbound sink rejects them
+     * ("Failed to enqueue message"), the answer is lost, and the client waits forever. The tools
+     * answer in milliseconds, so running them one at a time costs nothing.
+     *
      * @param name         server name reported to the client
      * @param version      server version reported to the client
      * @param instructions guidance for the model on when and how to use the tools
@@ -64,6 +70,7 @@ public final class StdioServer {
                 .instructions(instructions)
                 .capabilities(ServerCapabilities.builder().tools(false).build())
                 .tools(tools)
+                .immediateExecution(true)
                 .build();
     }
 
